@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import logging
 import uuid
+import re
+import urllib.parse
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +26,65 @@ router = APIRouter(tags=["workflows"])
 
 _WORKFLOWS_STORAGE = Path(__file__).resolve().parent.parent.parent / "storage" / "workflows.json"
 _WORKFLOWS_STORAGE.parent.mkdir(parents=True, exist_ok=True)
+
+
+def resolve_authoritative_url(prompt: str) -> str:
+    """Infer the best live, real-world authoritative URL based on user intent."""
+    p = prompt.lower()
+
+    # AI / Tech / Blogs
+    if any(k in p for k in ("ai blog", "ai news", "artificial intelligence", "llm", "gpt", "agent")):
+        return "https://techcrunch.com/category/artificial-intelligence/"
+    if any(k in p for k in ("tech news", "hacker news", "y combinator", "programming blog", "developer post")):
+        return "https://news.ycombinator.com"
+    if any(k in p for k in ("medium", "blog post", "article", "newsletter", "substack")):
+        return "https://medium.com/tag/artificial-intelligence"
+    if any(k in p for k in ("dev.to", "coding blog", "tutorials")):
+        return "https://dev.to"
+
+    # Finance / Stocks / Crypto
+    if any(k in p for k in ("stock", "market", "share", "ticker", "nasdaq", "nyse", "invest")):
+        return "https://finance.yahoo.com/trending-tickers"
+    if any(k in p for k in ("crypto", "airdrop", "bitcoin", "ethereum", "solana", "token")):
+        return "https://coinmarketcap.com"
+
+    # Products / Startups / Bounties
+    if any(k in p for k in ("product", "startup", "launch", "producthunt", "saas")):
+        return "https://www.producthunt.com"
+    if any(k in p for k in ("github", "repo", "bounty", "good first issue", "open source")):
+        return "https://github.com/trending"
+    if any(k in p for k in ("grant", "funding", "web3 grant", "gitcoin")):
+        return "https://gitcoin.co/grants"
+
+    # Hackathons / College / Jobs
+    if any(k in p for k in ("hackathon", "internship", "college", "competition", "contest")):
+        return "https://unstop.com/hackathons"
+    if any(k in p for k in ("devpost", "hack")):
+        return "https://devpost.com/hackathons"
+    if any(k in p for k in ("job", "hiring", "career")):
+        return "https://news.ycombinator.com/jobs"
+
+    # Research / Science
+    if any(k in p for k in ("paper", "arxiv", "research", "science")):
+        return "https://arxiv.org/list/cs.AI/recent"
+
+    # Search Fallback: Formulate a DuckDuckGo web search
+    clean_query = re.sub(r'[^\w\s]', '', prompt).strip()
+    encoded = urllib.parse.quote_plus(clean_query[:50])
+    return f"https://duckduckgo.com/?q={encoded}"
+
+
+def sanitize_workflow_urls(workflow: WorkflowDefinition, prompt: str) -> WorkflowDefinition:
+    """Ensure no step uses example.com or placeholder URLs."""
+    fallback_url = resolve_authoritative_url(prompt)
+    for step in workflow.steps:
+        if step.type == "navigate":
+            url = step.params.get("url", "")
+            if not url or any(bad in url.lower() for bad in ("example.com", "your-site", "localhost", "mysite", "placeholder")):
+                step.params["url"] = fallback_url
+                step.description = f"Navigate to {fallback_url}"
+    return workflow
+
 
 # Default pre-built templates
 DEFAULT_TEMPLATES = [
@@ -188,37 +249,46 @@ async def list_workflows():
 
 @router.post("/workflows/synthesize")
 async def synthesize_workflow(req: SynthesizeRequest):
-    """Use gpt-4o-mini to convert a plain-English user prompt into visual workflow action blocks."""
+    """Use gpt-4o-mini to convert a plain-English user prompt into visual workflow action blocks.
+    
+    Autonomously resolves real-world URLs and never outputs example.com or placeholder domains.
+    """
     settings = get_settings()
     prompt = req.prompt.strip()
+    smart_seed_url = resolve_authoritative_url(prompt)
 
-    system_prompt = """You are Scout's Autonomous Workflow Compiler. Convert the user's natural language request into a sequence of executable visual action blocks.
+    system_prompt = f"""You are Scout's Autonomous Workflow Compiler. Convert the user's natural language request into a sequence of executable visual action blocks.
+
+CRITICAL RULES:
+1. NEVER output 'example.com', 'your-site.com', or generic placeholders for the 'navigate' URL.
+2. If the user does NOT explicitly specify a URL in their prompt, you MUST autonomously choose the best REAL-WORLD, LIVE, HIGH-TRAFFIC URL matching their topic (e.g. https://news.ycombinator.com, https://techcrunch.com/category/artificial-intelligence/, https://finance.yahoo.com/trending-tickers, https://unstop.com/hackathons, https://github.com/trending, https://www.producthunt.com).
+3. Recommended default target URL for this request: {smart_seed_url}
 
 Supported action block types:
-- "navigate": {"url": "https://..."}
-- "scroll": {"scroll_times": 3, "delay_ms": 1000}
-- "ai_filter": {"criteria": "What to extract/filter", "limit": 3}
-- "screenshot": {"label": "descriptive_name"}
-- "click": {"selector": "css_selector"}
-- "fill": {"fields": {"selector": "value"}}
-- "export": {"notify": true}
+- "navigate": {{"url": "https://..."}}
+- "scroll": {{"scroll_times": 3, "delay_ms": 1000}}
+- "ai_filter": {{"criteria": "What to extract/filter", "limit": 3}}
+- "screenshot": {{"label": "descriptive_name"}}
+- "click": {{"selector": "css_selector"}}
+- "fill": {{"fields": {{"selector": "value"}}}}
+- "export": {{"notify": true}}
 
 Output ONLY valid JSON matching this schema:
-{
+{{
   "name": "Catchy Workflow Name",
   "description": "Clear 1-sentence description of what this agent does",
   "category": "Content & Media" | "Automation & Forms" | "Finance & Trading" | "Custom Agent",
   "steps": [
-    {
+    {{
       "id": "step-1",
       "type": "navigate" | "scroll" | "ai_filter" | "screenshot" | "click" | "fill" | "export",
       "title": "Short Step Title",
       "description": "What this step performs",
-      "params": {},
+      "params": {{}},
       "icon": "Globe" | "ArrowDownCircle" | "Brain" | "Camera" | "MousePointer" | "Save"
-    }
+    }}
   ]
-}"""
+}}"""
 
     if settings.openai_api_key:
         try:
@@ -230,7 +300,7 @@ Output ONLY valid JSON matching this schema:
                 response_format={"type": "json_object"},
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"User Request: {prompt}"},
+                    {"role": "user", "content": f"User Request: {prompt}\nTarget Seed Suggestion: {smart_seed_url}"},
                 ],
             )
             raw = res.choices[0].message.content or "{}"
@@ -242,22 +312,23 @@ Output ONLY valid JSON matching this schema:
                 category=data.get("category", "Custom Agent"),
                 steps=[WorkflowStep(**s) for s in data.get("steps", [])],
             )
+            workflow = sanitize_workflow_urls(workflow, prompt)
             return {"status": "success", "workflow": workflow.model_dump(mode="json")}
         except Exception as exc:
             logger.warning("AI synthesis failed: %s — using fast local fallback compiler", exc)
 
-    # Fast Local Fallback Compiler
+    # Fast Local Fallback Compiler with Smart Seed Resolution
     steps = [
         WorkflowStep(
             type="navigate",
-            title="1. Open Target URL",
-            description="Navigate to website in stealth browser",
-            params={"url": "https://news.ycombinator.com" if "news" in prompt.lower() or "blog" in prompt.lower() else "https://unstop.com/hackathons"},
+            title="1. Open Target Website",
+            description=f"Navigate to {smart_seed_url} in stealth browser",
+            params={"url": smart_seed_url},
             icon="Globe",
         ),
         WorkflowStep(
             type="scroll",
-            title="2. Smart Scroll Content",
+            title="2. Smart Scroll Feed",
             description="Scroll down to reveal cards and dynamic elements",
             params={"scroll_times": 3, "delay_ms": 1000},
             icon="ArrowDownCircle",
@@ -271,7 +342,7 @@ Output ONLY valid JSON matching this schema:
         ),
         WorkflowStep(
             type="screenshot",
-            title="4. Capture Visual Snapshot",
+            title="4. Capture Visual Proofs",
             description="Save visual artifact to gallery",
             params={"label": "workflow_snapshot"},
             icon="Camera",

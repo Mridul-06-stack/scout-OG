@@ -230,7 +230,7 @@ export default function WorkflowStudioPage() {
         <div className="flex flex-col sm:flex-row items-stretch gap-3">
           <input
             type="text"
-            placeholder="e.g. Scroll medium.com/tag/ai, find top 3 trending articles, take a full screenshot of each, and save to gallery"
+            placeholder="Type any goal in plain English (e.g. 'Scroll AI blog posts and take screenshots', 'Track stock market movers', 'Find good first issues on GitHub')"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSynthesize()}
@@ -261,7 +261,9 @@ export default function WorkflowStudioPage() {
           {[
             "Scroll tech blog page, find good AI articles and take screenshots",
             "Monitor trending stocks and capture chart snapshots",
+            "Find good-first-issue GitHub bounties and snapshot READMEs",
             "Scan hackathon portal and pre-fill application questions",
+            "Explore top AI tools on Product Hunt and extract launches",
           ].map((example, i) => (
             <button
               key={i}
