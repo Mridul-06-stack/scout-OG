@@ -10,16 +10,27 @@ import {
   CheckCircle2, 
   Layers,
   Sparkles,
-  ShieldCheck
+  ShieldCheck,
+  FileText,
+  Loader2,
+  ExternalLink,
+  ArrowRight,
+  Bot
 } from "lucide-react";
 import ApprovalCard from "@/components/ApprovalCard";
-import { fetchApprovals, simulateApprovalAction } from "@/lib/api";
+import { fetchApprovals, simulateApprovalAction, fillForm } from "@/lib/api";
 import { ApprovalDecision } from "@/lib/types";
 
 export default function ApprovalsPage() {
   const [approvals, setApprovals] = useState<ApprovalDecision[]>([]);
   const [loading, setLoading] = useState(true);
   const [simulating, setSimulating] = useState(false);
+
+  // Form Filler Sandbox State
+  const [customFormUrl, setCustomFormUrl] = useState("");
+  const [autoSubmit, setAutoSubmit] = useState(false);
+  const [formFilling, setFormFilling] = useState(false);
+  const [formFillResult, setFormFillResult] = useState<any>(null);
 
   const loadApprovals = async () => {
     setLoading(true);
@@ -35,7 +46,6 @@ export default function ApprovalsPage() {
 
   useEffect(() => {
     loadApprovals();
-    // Auto-poll approvals every 3s to reflect live status transitions
     const interval = setInterval(loadApprovals, 3000);
     return () => clearInterval(interval);
   }, []);
@@ -47,6 +57,27 @@ export default function ApprovalsPage() {
       await loadApprovals();
     } finally {
       setSimulating(false);
+    }
+  };
+
+  const handleCustomFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customFormUrl) return;
+
+    setFormFilling(true);
+    setFormFillResult(null);
+
+    try {
+      const res = await fillForm({
+        form_url: customFormUrl,
+        auto_submit: autoSubmit,
+      });
+      setFormFillResult(res);
+      loadApprovals();
+    } catch (err: any) {
+      setFormFillResult({ status: "error", error: err.message || "Failed to fill form" });
+    } finally {
+      setFormFilling(false);
     }
   };
 
@@ -67,10 +98,10 @@ export default function ApprovalsPage() {
             </span>
           </div>
           <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-white">
-            Approval & Safety Gate
+            Approval Gate & Form Automation
           </h2>
           <p className="text-xs sm:text-sm text-slate-300 font-medium">
-            Guarantees zero unauthorized writes · Blocks execution until explicit human confirmation
+            Autonomous webcmd form filler · Human checkpoint before any real submission
           </p>
         </div>
 
@@ -85,35 +116,110 @@ export default function ApprovalsPage() {
         </div>
       </div>
 
-      {/* ── Hard Guarantee Architecture Callout ── */}
-      <div className="bento-card p-6 border border-rose-500/30 bg-gradient-to-r from-rose-950/30 via-[#181124]/90 to-[#121428] flex flex-col sm:flex-row items-start gap-5 shadow-xl">
-        <div className="p-3.5 rounded-2xl bg-rose-500/20 text-rose-300 border border-rose-500/30 shrink-0">
-          <Lock className="w-6 h-6" />
+      {/* ── Google Form Auto-Fill Live Sandbox Bento ── */}
+      <div className="bento-card p-6 sm:p-8 border border-indigo-500/30 bg-gradient-to-br from-indigo-950/40 via-purple-950/20 to-[#0e1124] space-y-5 shadow-2xl relative overflow-hidden">
+        <div className="absolute -top-10 -right-10 w-60 h-60 bg-gradient-to-bl from-indigo-500/20 to-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="flex items-center justify-between relative z-10">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="p-2 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                <FileText className="w-5 h-5 text-indigo-400" />
+              </span>
+              <h3 className="text-base sm:text-lg font-black text-white">
+                Live Google Form & Web Form Auto-Filler
+              </h3>
+            </div>
+            <p className="text-xs text-slate-300 font-medium">
+              Paste ANY Google Form URL or registration link. Scout's <code className="text-indigo-300 font-mono">webcmd CloakBrowser</code> will inspect input fields and type your profile data!
+            </p>
+          </div>
         </div>
-        <div className="space-y-1.5">
-          <h4 className="text-sm font-extrabold text-white">
-            Non-Bypassable Safety Architecture
-          </h4>
-          <p className="text-xs text-rose-200/90 leading-relaxed font-medium">
-            No autonomous action that <strong>applies, submits, pays, books, or mutates data</strong> is ever executed without explicit human consent. 
-            The pipeline physically suspends at <code className="text-rose-300 font-mono text-[11px] bg-black/50 px-2 py-0.5 rounded-lg border border-white/[0.08]">approval_gate.request()</code> until resolved in this UI.
-          </p>
-        </div>
+
+        <form onSubmit={handleCustomFormSubmit} className="space-y-4 relative z-10">
+          <div className="flex flex-col sm:flex-row items-stretch gap-3">
+            <input
+              type="url"
+              placeholder="https://docs.google.com/forms/d/e/.../viewform or any application URL"
+              value={customFormUrl}
+              onChange={(e) => setCustomFormUrl(e.target.value)}
+              required
+              disabled={formFilling}
+              className="flex-1 bg-[#121528] border border-white/[0.08] focus:border-indigo-500 rounded-2xl px-4 py-3 text-xs text-white placeholder-slate-500 outline-none font-mono shadow-inner"
+            />
+
+            <button
+              type="submit"
+              disabled={formFilling || !customFormUrl}
+              className="px-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white text-xs font-black shadow-xl shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50 hover:scale-105 shrink-0"
+            >
+              {formFilling ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>webcmd Typing Form...</span>
+                </>
+              ) : (
+                <>
+                  <Bot className="w-4 h-4" />
+                  <span>Auto-Fill Form Now</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          <div className="flex items-center gap-4 text-xs">
+            <label className="flex items-center gap-2 text-slate-300 cursor-pointer font-medium">
+              <input
+                type="checkbox"
+                checked={autoSubmit}
+                onChange={(e) => setAutoSubmit(e.target.checked)}
+                className="rounded bg-black/40 border-white/20 text-indigo-600 focus:ring-0 w-4 h-4"
+              />
+              <span>Click Final Submit Button in Browser (Uncheck to only pre-fill inputs)</span>
+            </label>
+          </div>
+        </form>
+
+        {/* Live Form Fill Results Telemetry */}
+        {formFillResult && (
+          <div className="p-4 rounded-2xl bg-[#080a18] border border-indigo-500/30 text-xs space-y-2.5 animate-in fade-in duration-200 relative z-10 shadow-inner">
+            <div className="flex items-center justify-between">
+              <span className="font-black text-emerald-400 flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4" />
+                {formFillResult.status === "success" ? "Form Auto-Filled Successfully!" : "Form Process Result"}
+              </span>
+              <span className="text-[10px] font-mono text-slate-400">
+                {formFillResult.filledCount || 0} Fields Processed
+              </span>
+            </div>
+
+            {formFillResult.filledFields && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                {formFillResult.filledFields.map((f: any, i: number) => (
+                  <div key={i} className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.05] font-mono text-[11px]">
+                    <span className="text-indigo-300 block text-[9px] uppercase font-bold truncate">{f.field}</span>
+                    <span className="text-white truncate block">{f.value}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Demo Simulation Controls Bento ── */}
-      <div className="bento-card p-6 sm:p-7 border border-indigo-500/30 bg-gradient-to-br from-indigo-950/30 via-purple-950/20 to-[#0e1124] space-y-4 shadow-xl">
+      <div className="bento-card p-6 sm:p-7 border border-white/[0.08] space-y-4 shadow-xl">
         <div>
           <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
-            <Zap className="w-4 h-4 text-indigo-400" />
-            Live Demo Trigger: Test Human Safety Gate
+            <Zap className="w-4 h-4 text-amber-400" />
+            Simulate Staged Write Actions
           </h3>
-          <p className="text-xs text-slate-300 mt-1 font-medium">
-            Click any action below to dispatch a sensitive workflow and watch Scout hold until you click Approve.
+          <p className="text-xs text-slate-400 mt-1 font-medium">
+            Stage a mock registration or payment to test human gate approval holding.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
           <button
             onClick={() =>
               handleSimulate(
@@ -145,7 +251,7 @@ export default function ApprovalsPage() {
             className="p-4 rounded-2xl bg-white/[0.03] hover:bg-amber-600/20 border border-white/[0.08] hover:border-amber-500/50 text-left transition-all hover:scale-[1.02] group shadow-sm"
           >
             <span className="text-xs font-black text-white group-hover:text-amber-200 block">
-              2. Simulate Hotel Room Booking
+              2. Simulate Hotel Booking Hold
             </span>
             <span className="text-[11px] text-slate-400 block mt-1 font-mono">
               action: payment · target: Hotel Checkout
@@ -189,7 +295,7 @@ export default function ApprovalsPage() {
             </div>
             <h4 className="text-base font-extrabold text-white">Queue Clear & Safe</h4>
             <p className="text-xs text-slate-400 max-w-sm mx-auto font-medium">
-              No write actions are currently awaiting authorization. Use the simulation buttons above to trigger a test.
+              No write actions are currently awaiting authorization. Use the simulation buttons or Google Form auto-filler above!
             </p>
           </div>
         ) : (

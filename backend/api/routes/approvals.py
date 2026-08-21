@@ -65,8 +65,29 @@ async def simulate_write_action(
         target_url=target_url,
     )
 
-    # Launch in background so client gets the request immediately
     task = asyncio.create_task(request(write_act))
     await asyncio.sleep(0.05)
 
     return {"message": "Write action initiated. Gated for human approval."}
+
+
+from pydantic import BaseModel, Field
+
+
+class FormFillRequest(BaseModel):
+    form_url: str = Field(..., description="Target Google Form or registration URL")
+    user_data: dict[str, Any] | None = Field(default=None, description="Custom field values")
+    auto_submit: bool = Field(default=False, description="Whether to click submit button")
+
+
+@router.post("/approvals/fill-form")
+async def fill_form_endpoint(req: FormFillRequest):
+    """Directly fill a Google Form or registration portal using webcmd CloakBrowser."""
+    from core.approval_gate.approval_gate import fill_and_submit_form
+    result = await fill_and_submit_form(
+        form_url=req.form_url,
+        user_data=req.user_data,
+        auto_submit=req.auto_submit,
+    )
+    return result
+

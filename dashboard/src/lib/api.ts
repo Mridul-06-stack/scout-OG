@@ -181,3 +181,16 @@ export async function createVertical(data: {
   }
   return res.json();
 }
+
+export async function fillForm(data: {
+  form_url: string;
+  user_data?: Record<string, any>;
+  auto_submit?: boolean;
+}): Promise<any> {
+  const res = await fetch(`${BASE_URL}/api/approvals/fill-form`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}

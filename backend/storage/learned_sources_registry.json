@@ -190,7 +190,7 @@
     "strategy": "intercepted_api",
     "extraction_schema_ref": "opportunity_schema.json",
     "compiled_command_ref": "webcmd_explore_github_com",
-    "last_run_at": "2026-08-21T13:55:26.084315",
+    "last_run_at": "2026-08-21T14:00:14.481314",
     "last_run_status": "success",
     "consecutive_failures": 0,
     "requires_approval_for": []
@@ -204,7 +204,7 @@
     "strategy": "public_dom",
     "extraction_schema_ref": "opportunity_schema.json",
     "compiled_command_ref": "webcmd_explore_gitcoin_co",
-    "last_run_at": "2026-08-21T13:55:29.734772",
+    "last_run_at": "2026-08-21T14:00:18.301575",
     "last_run_status": "success",
     "consecutive_failures": 0,
     "requires_approval_for": []
@@ -218,7 +218,7 @@
     "strategy": "public_dom",
     "extraction_schema_ref": "opportunity_schema.json",
     "compiled_command_ref": "webcmd_explore_web3_foundation",
-    "last_run_at": "2026-08-21T13:55:33.788857",
+    "last_run_at": "2026-08-21T14:00:22.276495",
     "last_run_status": "success",
     "consecutive_failures": 0,
     "requires_approval_for": []
@@ -247,6 +247,34 @@
     "extraction_schema_ref": "opportunity_schema.json",
     "compiled_command_ref": "webcmd_explore_www_moneycontrol_com",
     "last_run_at": "2026-08-21T13:45:34.095984",
+    "last_run_status": "success",
+    "consecutive_failures": 0,
+    "requires_approval_for": []
+  },
+  "solana.foundation": {
+    "id": "0006c56e-13cc-4d03-b235-5d2c63175192",
+    "source_domain": "solana.foundation",
+    "source_url": "https://solana.foundation/grants",
+    "vertical": "github_issues_grants",
+    "learned_at": "2026-08-21T14:00:26.565139",
+    "strategy": "public_dom",
+    "extraction_schema_ref": "opportunity_schema.json",
+    "compiled_command_ref": "webcmd_explore_solana_foundation",
+    "last_run_at": "2026-08-21T14:00:30.287406",
+    "last_run_status": "success",
+    "consecutive_failures": 0,
+    "requires_approval_for": []
+  },
+  "algorand.foundation": {
+    "id": "568ac79f-6d89-49ff-a972-b00673bb8a85",
+    "source_domain": "algorand.foundation",
+    "source_url": "https://algorand.foundation/dev-grants",
+    "vertical": "github_issues_grants",
+    "learned_at": "2026-08-21T14:00:37.437606",
+    "strategy": "public_dom",
+    "extraction_schema_ref": "opportunity_schema.json",
+    "compiled_command_ref": "webcmd_explore_algorand_foundation",
+    "last_run_at": "2026-08-21T14:00:42.589763",
     "last_run_status": "success",
     "consecutive_failures": 0,
     "requires_approval_for": []
