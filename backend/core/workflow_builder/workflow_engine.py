@@ -101,6 +101,70 @@ def _extract_json_from_webcmd(out: str) -> dict | None:
     return None
 
 
+def _get_auth_cookies_script(target_url: str = "") -> str:
+    """Build Playwright script to inject authenticated session cookies from the user's Identity Vault."""
+    try:
+        profile_path = Path(__file__).resolve().parent.parent.parent / "storage" / "user_profile.json"
+        if not profile_path.exists():
+            return ""
+        data = json.loads(profile_path.read_text())
+        custom_vault = data.get("custom_vault", {})
+        cookies = []
+
+        # GitHub auth session cookie from Identity Vault
+        github_session = (
+            custom_vault.get("github_user_session")
+            or custom_vault.get("github_session")
+            or custom_vault.get("user_session")
+        )
+        if github_session and ("github.com" in target_url.lower() or not target_url):
+            cookies.append({
+                "name": "user_session",
+                "value": github_session,
+                "domain": ".github.com",
+                "path": "/",
+                "secure": True,
+                "httpOnly": True,
+            })
+            cookies.append({
+                "name": "__Host-user_session_same_site",
+                "value": github_session,
+                "domain": "github.com",
+                "path": "/",
+                "secure": True,
+                "httpOnly": True,
+            })
+            cookies.append({
+                "name": "logged_in",
+                "value": "yes",
+                "domain": ".github.com",
+                "path": "/",
+                "secure": True,
+            })
+
+        # Generic session cookies stored in custom_vault
+        if "session_cookies" in custom_vault:
+            try:
+                raw = json.loads(custom_vault["session_cookies"])
+                if isinstance(raw, list):
+                    cookies.extend(raw)
+            except Exception:
+                pass
+
+        if cookies:
+            cookies_json = json.dumps(cookies)
+            return f"""
+try {{
+    await page.context().addCookies({cookies_json});
+}} catch (cookieErr) {{
+    console.log('Non-fatal cookie injection notice:', cookieErr.message);
+}}
+"""
+    except Exception as exc:
+        logger.warning("Could not build auth cookie script: %s", exc)
+    return ""
+
+
 async def execute_visual_workflow(
     workflow: WorkflowDefinition,
 ) -> WorkflowExecutionResult:
@@ -127,7 +191,9 @@ async def execute_visual_workflow(
                 if step.type == "navigate":
                     target_url = step.params.get("url", "https://news.ycombinator.com")
                     current_url = target_url
+                    auth_cookie_code = _get_auth_cookies_script(target_url)
                     script = f"""
+{auth_cookie_code}
 await page.goto('{target_url}', {{ waitUntil: 'domcontentloaded', timeout: 30000 }});
 await page.waitForTimeout(2000);
 console.log(JSON.stringify({{ status: 'success', url: page.url(), title: await page.title() }}));
