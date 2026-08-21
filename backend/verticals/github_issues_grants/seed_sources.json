@@ -1,0 +1,27 @@
+[
+  {
+    "name": "Rust Lang Easy Issues",
+    "url": "https://github.com/rust-lang/rust/issues?q=is%3Aissue+is%3Aopen+label%3AE-easy",
+    "categories": ["good_first_issue", "open_source"]
+  },
+  {
+    "name": "React Good First Issues",
+    "url": "https://github.com/facebook/react/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22",
+    "categories": ["good_first_issue", "open_source"]
+  },
+  {
+    "name": "Flask Good First Issues",
+    "url": "https://github.com/pallets/flask/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22",
+    "categories": ["good_first_issue", "open_source"]
+  },
+  {
+    "name": "Gitcoin Developer Grants",
+    "url": "https://gitcoin.co/grants",
+    "categories": ["grant", "bounty"]
+  },
+  {
+    "name": "Web3 Foundation Grants Program",
+    "url": "https://web3.foundation/grants/",
+    "categories": ["grant", "open_source"]
+  }
+]

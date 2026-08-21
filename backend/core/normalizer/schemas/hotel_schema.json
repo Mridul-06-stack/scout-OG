@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Hotel",
+  "type": "object",
+  "required": ["title", "price_per_night"],
+  "properties": {
+    "title": { "type": "string" },
+    "type": { "type": "string", "enum": ["hotel", "resort", "hostel", "homestay", "villa"] },
+    "location": { "type": "string" },
+    "price_per_night": { "type": "number" },
+    "currency": { "type": "string", "default": "INR" },
+    "rating": { "type": "number", "minimum": 0, "maximum": 5 },
+    "availability": { "type": "boolean" },
+    "check_in": { "type": "string", "format": "date" },
+    "check_out": { "type": "string", "format": "date" },
+    "amenities": { "type": "array", "items": { "type": "string" } },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "url": { "type": "string", "format": "uri" },
+    "description": { "type": "string" }
+  }
+}

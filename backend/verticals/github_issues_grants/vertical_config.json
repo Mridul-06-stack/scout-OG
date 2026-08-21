@@ -1,0 +1,9 @@
+{
+  "vertical": "github_issues_grants",
+  "display_name": "GitHub Issues & Dev Grants",
+  "description": "Good-first-issues, developer bounties, open-source grants, and RFPs",
+  "icon": "🐙",
+  "categories": ["good_first_issue", "grant", "bounty", "rfp", "open_source"],
+  "schema_ref": "issue_grant_schema.json",
+  "default_interval": "4h"
+}

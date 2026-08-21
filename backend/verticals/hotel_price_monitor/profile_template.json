@@ -1,0 +1,13 @@
+{
+  "vertical_interests": ["hotel_price_monitor"],
+  "attributes": {
+    "location": "India",
+    "trip_type": "leisure"
+  },
+  "include_tags": ["budget", "mountain_view", "Manali", "wifi", "breakfast"],
+  "exclude_tags": ["luxury"],
+  "constraints": {
+    "max_price": 3000,
+    "region": "Manali"
+  }
+}

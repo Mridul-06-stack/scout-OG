@@ -1,0 +1,12 @@
+{
+  "vertical_interests": ["student_opportunities"],
+  "attributes": {
+    "year": 2,
+    "field": "CSE",
+    "location": "India",
+    "university": "NIT Hamirpur"
+  },
+  "include_tags": ["AI", "machine_learning", "open_source", "hackathon", "remote", "India", "coding"],
+  "exclude_tags": ["unpaid", "frontend_only"],
+  "constraints": {}
+}

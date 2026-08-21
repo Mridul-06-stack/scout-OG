@@ -1,0 +1,9 @@
+{
+  "vertical": "CHANGE_ME",
+  "display_name": "My New Vertical",
+  "description": "Description of what this vertical monitors",
+  "icon": "🔍",
+  "categories": ["category1", "category2"],
+  "schema_ref": "opportunity_schema.json",
+  "default_interval": "6h"
+}

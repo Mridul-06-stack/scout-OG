@@ -1,0 +1,9 @@
+{
+  "vertical": "hotel_price_monitor",
+  "display_name": "Hotel Price Monitor",
+  "description": "Monitor hotel prices and availability against user-defined thresholds",
+  "icon": "🏨",
+  "categories": ["hotel", "resort", "hostel", "homestay"],
+  "schema_ref": "hotel_schema.json",
+  "default_interval": "4h"
+}
