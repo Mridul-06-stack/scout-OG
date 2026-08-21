@@ -136,20 +136,39 @@ console.log(JSON.stringify({{ status: 'success', url: page.url(), title: await p
                     step_res.data = data
 
                 elif step.type == "scroll":
-                    scroll_times = int(step.params.get("scroll_times", 3))
-                    delay_ms = int(step.params.get("delay_ms", 1000))
-                    script = f"""
-for (let i = 0; i < {scroll_times}; i++) {{
-    await page.evaluate(() => window.scrollBy(0, window.innerHeight * 0.85));
-    await page.waitForTimeout({delay_ms});
+                    times = step.params.get("scroll_times", 3)
+                    delay_ms = step.params.get("delay_ms", 1000)
+                    target = step.params.get("target", "")
+                    
+                    scroll_script = f"""
+try {{
+    // If step targets README or markdown article, scroll directly into it
+    const targetSel = '{target}' || ('{step.title.lower()}'.includes('readme') ? 'article.markdown-body, #readme, div[data-target="readme-toc.content"]' : '');
+    if (targetSel) {{
+        const targetEl = page.locator(targetSel).first();
+        if (await targetEl.count() > 0) {{
+            await targetEl.scrollIntoViewIfNeeded();
+            await page.waitForTimeout(1000);
+            console.log(JSON.stringify({{ status: 'success', scrolledTo: targetSel, finalHeight: await page.evaluate(() => window.scrollY) }}));
+            return;
+        }}
+    }}
+
+    let finalHeight = 0;
+    for (let i = 0; i < {times}; i++) {{
+        await page.evaluate(() => window.scrollBy(0, window.innerHeight * 0.9));
+        await page.waitForTimeout({delay_ms});
+    }}
+    finalHeight = await page.evaluate(() => document.body.scrollHeight);
+    console.log(JSON.stringify({{ status: 'success', scrolledTimes: {times}, finalHeight }}));
+}} catch (err) {{
+    console.log(JSON.stringify({{ status: 'error', message: err.message }}));
 }}
-const height = await page.evaluate(() => document.body.scrollHeight);
-console.log(JSON.stringify({{ status: 'success', scrolledTimes: {scroll_times}, finalHeight: height }}));
 """
-                    out = await adapter._run_cli(["--session", session_id, "browser", "run", "--stdin"], stdin_input=script, timeout=45)
-                    data = _extract_json_from_webcmd(out) or {}
-                    step_res.output_message = f"Scrolled down {scroll_times} times to discover dynamic lazy-loaded cards."
-                    step_res.data = data
+                    out = await adapter._run_cli(["--session", session_id, "browser", "run", "--stdin"], stdin_input=scroll_script, timeout=30)
+                    scroll_data = _extract_json_from_webcmd(out) or {}
+                    step_res.output_message = f"Scrolled into target content / revealed dynamic elements."
+                    step_res.data = scroll_data
 
                 elif step.type == "ai_filter":
                     criteria = step.params.get("criteria", "Find top 3 high quality, relevant articles")
