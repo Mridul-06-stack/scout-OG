@@ -3,15 +3,13 @@
     "share_market_stock_radar"
   ],
   "include_tags": [
-    "stocks",
-    "earnings"
+    "breakout stocks",
+    "earnings dates"
   ],
   "exclude_tags": [
     "spam",
     "unverified"
   ],
-  "attributes": {
-    "preference": "high_growth"
-  },
+  "attributes": {},
   "constraints": {}
 }

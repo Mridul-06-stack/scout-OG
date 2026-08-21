@@ -1,19 +1,18 @@
 {
   "name": "Share Market & Stock Radar",
-  "description": "Track breakout stocks, earnings reports, P/E ratios, buy signals, and financial market news",
+  "description": "Track breakout stocks, quarterly earnings dates, P/E ratios, and market signals from financial portals",
   "icon": "TrendingUp",
   "schema_ref": "share_market_stock_radar_schema.json",
   "categories": [
     "breakout_stock",
     "earnings",
-    "dividends",
-    "large_cap",
-    "mid_cap"
+    "dividend",
+    "valuation"
   ],
   "keywords": [
-    "stocks",
-    "earnings",
-    "financial news"
+    "breakout stocks",
+    "earnings dates",
+    "P/E ratios"
   ],
   "field_mappings": {
     "title": [

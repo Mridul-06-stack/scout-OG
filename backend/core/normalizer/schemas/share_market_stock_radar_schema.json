@@ -23,12 +23,6 @@
       "items": {
         "type": "string"
       }
-    },
-    "custom_field_1": {
-      "type": "string"
-    },
-    "custom_field_2": {
-      "type": "string"
     }
   }
 }

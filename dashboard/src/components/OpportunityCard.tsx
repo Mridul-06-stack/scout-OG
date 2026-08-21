@@ -2,226 +2,219 @@
 
 import { useState } from "react";
 import { 
-  ExternalLink, 
-  MapPin, 
   Calendar, 
-  Tag, 
+  MapPin, 
+  ExternalLink, 
+  Clock, 
+  Sparkles, 
   ChevronDown, 
   ChevronUp, 
-  DollarSign,
+  CheckCircle2, 
+  Layers,
+  ArrowRight,
+  Globe2,
+  Tag,
   Building,
-  Sparkles,
-  GitBranch,
-  Hotel,
-  GraduationCap
+  DollarSign
 } from "lucide-react";
-import { Opportunity, OpportunityStatus } from "../lib/types";
+import { Opportunity, OpportunityStatus } from "@/lib/types";
 import MatchScoreRing from "./MatchScoreRing";
-import ChangeTypeBadge from "./ChangeTypeBadge";
 
 interface OpportunityCardProps {
   opportunity: Opportunity;
-  onStatusChange?: (id: string, newStatus: OpportunityStatus) => Promise<void>;
+  onStatusChange?: (id: string, status: OpportunityStatus) => void;
 }
 
 export default function OpportunityCard({
   opportunity,
   onStatusChange,
 }: OpportunityCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
-  const statusOptions: { label: string; value: OpportunityStatus; bg: string }[] = [
-    { label: "Discovered", value: "discovered", bg: "bg-slate-500/20 text-slate-300" },
-    { label: "Interested", value: "interested", bg: "bg-indigo-500/20 text-indigo-300" },
-    { label: "Applying", value: "applying", bg: "bg-amber-500/20 text-amber-300" },
-    { label: "Applied", value: "applied", bg: "bg-cyan-500/20 text-cyan-300" },
-    { label: "Selected", value: "selected", bg: "bg-emerald-500/20 text-emerald-300" },
-    { label: "Closed", value: "closed", bg: "bg-rose-500/20 text-rose-300" },
-  ];
-
-  const handleStatusChange = async (newStatus: OpportunityStatus) => {
-    if (!onStatusChange || isUpdating) return;
-    setIsUpdating(true);
-    try {
-      await onStatusChange(opportunity.id, newStatus);
-    } finally {
-      setIsUpdating(false);
+  const getChangeBadge = () => {
+    switch (opportunity.change_type) {
+      case "new":
+        return {
+          label: "✨ New Today",
+          color: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+          barColor: "bg-emerald-500 shadow-emerald-500/50",
+        };
+      case "closing_soon":
+        return {
+          label: "⏰ Closing Soon",
+          color: "bg-rose-500/15 text-rose-300 border-rose-500/30",
+          barColor: "bg-rose-500 shadow-rose-500/50",
+        };
+      case "updated":
+        return {
+          label: "🔄 Updated",
+          color: "bg-amber-500/15 text-amber-300 border-amber-500/30",
+          barColor: "bg-amber-500 shadow-amber-500/50",
+        };
+      default:
+        return {
+          label: "✓ Active",
+          color: "bg-slate-500/10 text-slate-400 border-slate-500/20",
+          barColor: "bg-indigo-500/50",
+        };
     }
   };
 
-  const deadlineFormatted = opportunity.deadline
-    ? new Date(opportunity.deadline).toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
-    : "No set deadline";
+  const badge = getChangeBadge();
 
-  const isHotel = opportunity.vertical === "hotel_price_monitor";
-  const isGithub = opportunity.vertical === "github_issues_grants";
-  const raw = opportunity.raw_fields || {};
+  const getDomain = (url: string) => {
+    try {
+      return new URL(url).hostname.replace("www.", "");
+    } catch {
+      return "web source";
+    }
+  };
+
+  const domain = getDomain(opportunity.source_url);
 
   return (
-    <div className="bento-card bento-card-interactive p-6 relative group overflow-hidden border border-white/[0.08] hover:border-indigo-500/40">
-      {/* Top Ambient Glow Orb */}
-      <div className="absolute top-0 right-0 w-36 h-36 bg-gradient-to-bl from-indigo-500/10 via-purple-500/5 to-transparent rounded-full blur-2xl pointer-events-none group-hover:from-indigo-500/20 transition-all duration-500" />
+    <div className="bento-card p-5 sm:p-6 group relative overflow-hidden transition-all duration-300 hover:border-indigo-500/40">
+      {/* Left Vertical Status Bar Accent */}
+      <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${badge.barColor} shadow-md`} />
 
-      <div className="flex items-start justify-between gap-5 relative z-10">
-        <div className="flex-1 min-w-0 space-y-2.5">
-          {/* Header Badges Pill Row */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 pl-2">
+        {/* Main Content Area */}
+        <div className="space-y-3 flex-1 min-w-0">
+          {/* Top Metadata Row: Badges & Source Domain */}
           <div className="flex flex-wrap items-center gap-2">
-            <ChangeTypeBadge type={opportunity.change_type} />
-
-            {/* Vertical Indicator Pill */}
-            <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider flex items-center gap-1 border ${
-              isHotel 
-                ? "bg-amber-500/15 text-amber-300 border-amber-500/30" 
-                : isGithub 
-                ? "bg-purple-500/15 text-purple-300 border-purple-500/30"
-                : "bg-indigo-500/15 text-indigo-300 border-indigo-500/30"
-            }`}>
-              {isHotel && <Hotel className="w-3 h-3" />}
-              {isGithub && <GitBranch className="w-3 h-3" />}
-              {!isHotel && !isGithub && <GraduationCap className="w-3 h-3" />}
-              <span>{opportunity.type || (isHotel ? "Hotel Stay" : isGithub ? "GitHub Issue" : "Opportunity")}</span>
+            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border font-mono ${badge.color}`}>
+              {badge.label}
             </span>
 
-            {raw.organization && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-300 bg-white/[0.04] px-2.5 py-0.5 rounded-full border border-white/[0.06]">
-                <Building className="w-3 h-3 text-slate-400" />
-                {raw.organization}
+            {opportunity.type && (
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-white/[0.04] text-slate-300 border border-white/[0.08] font-mono">
+                {opportunity.type}
+              </span>
+            )}
+
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-slate-400 bg-white/[0.02] border border-white/[0.05] flex items-center gap-1 font-mono">
+              <Globe2 className="w-3 h-3 text-slate-400" />
+              {domain}
+            </span>
+          </div>
+
+          {/* Title & Description */}
+          <div className="space-y-1">
+            <h4 className="text-base sm:text-lg font-black text-white group-hover:text-indigo-200 transition-colors leading-snug font-display line-clamp-2">
+              {opportunity.title}
+            </h4>
+            {opportunity.raw_fields?.description && (
+              <p className="text-xs text-slate-400 line-clamp-2 font-medium leading-relaxed">
+                {opportunity.raw_fields.description}
+              </p>
+            )}
+          </div>
+
+          {/* Tags & Key Attributes */}
+          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+            {opportunity.tags?.slice(0, 5).map((tag, idx) => (
+              <span
+                key={idx}
+                className="px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 font-mono"
+              >
+                #{tag}
+              </span>
+            ))}
+
+            {opportunity.location && (
+              <span className="px-2 py-0.5 rounded-lg text-[10px] font-medium text-slate-400 flex items-center gap-1">
+                <MapPin className="w-3 h-3 text-slate-400" />
+                {opportunity.location}
+              </span>
+            )}
+
+            {opportunity.deadline && (
+              <span className="px-2 py-0.5 rounded-lg text-[10px] font-medium text-rose-300 flex items-center gap-1 font-mono">
+                <Calendar className="w-3 h-3 text-rose-400" />
+                {new Date(opportunity.deadline).toLocaleDateString()}
               </span>
             )}
           </div>
-
-          {/* Title */}
-          <h4 className="text-base sm:text-lg font-extrabold text-white tracking-tight group-hover:text-indigo-200 transition-colors leading-snug">
-            {opportunity.title}
-          </h4>
-
-          {/* Key Attributes Bar */}
-          <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300 font-medium">
-            {opportunity.location && (
-              <div className="flex items-center gap-1.5 bg-white/[0.03] px-2.5 py-1 rounded-xl border border-white/[0.05]">
-                <MapPin className="w-3.5 h-3.5 text-indigo-400" />
-                <span>{opportunity.location}</span>
-              </div>
-            )}
-
-            <div className="flex items-center gap-1.5 bg-white/[0.03] px-2.5 py-1 rounded-xl border border-white/[0.05]">
-              <Calendar className="w-3.5 h-3.5 text-indigo-400" />
-              <span>{isHotel ? `Check-in: ${raw.check_in || "Available"}` : `Deadline: ${deadlineFormatted}`}</span>
-            </div>
-
-            {/* Compensation / Price / Bounty */}
-            {(raw.stipend || raw.prize || raw.price_per_night || raw.reward_amount) && (
-              <div className="flex items-center gap-1 bg-emerald-500/10 text-emerald-300 px-2.5 py-1 rounded-xl border border-emerald-500/25 font-bold">
-                <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
-                <span>
-                  {isHotel
-                    ? `₹${raw.price_per_night} / night`
-                    : raw.stipend || raw.prize || raw.reward_amount}
-                </span>
-              </div>
-            )}
-          </div>
         </div>
 
-        {/* Match Score Indicator */}
-        <div className="flex flex-col items-center shrink-0">
-          <MatchScoreRing score={opportunity.match_score} size="md" />
-          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1.5 font-mono">
-            Fit Score
-          </span>
+        {/* Right Section: Match Score Ring & Action Buttons */}
+        <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-4 w-full sm:w-auto shrink-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-white/[0.06]">
+          {/* Match Score Ring */}
+          <div className="flex items-center gap-3">
+            <div className="text-right hidden sm:block">
+              <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block font-mono">
+                Fit Score
+              </span>
+              <span className="text-xs font-bold text-indigo-300">
+                {opportunity.match_score >= 0.7 ? "High Match" : opportunity.match_score >= 0.4 ? "Good Fit" : "Base Fit"}
+              </span>
+            </div>
+            <MatchScoreRing score={opportunity.match_score} size="md" />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2">
+            <a
+              href={opportunity.source_url}
+              target="_blank"
+              rel="noreferrer"
+              className="p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.09] text-slate-300 hover:text-white border border-white/[0.08] transition-all hover:scale-105"
+              title="Open Source Link"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </a>
+
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.09] text-slate-300 hover:text-white border border-white/[0.08] transition-all"
+              title="Toggle Live Telemetry"
+            >
+              {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Tags Chips */}
-      {opportunity.tags && opportunity.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mt-3.5">
-          {opportunity.tags.slice(0, 6).map((tag, idx) => (
-            <span
-              key={idx}
-              className="px-2.5 py-1 rounded-xl text-[11px] font-semibold bg-white/[0.04] text-slate-300 border border-white/[0.06] flex items-center gap-1 hover:bg-white/[0.08] transition-colors"
-            >
-              <Tag className="w-2.5 h-2.5 text-indigo-400" />
-              {tag}
+      {/* Expandable Live Telemetry & Raw Fields Drawer */}
+      {expanded && (
+        <div className="mt-5 pt-4 border-t border-white/[0.08] space-y-3 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-black uppercase tracking-wider text-indigo-300 font-mono flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-indigo-400" />
+              Live Extracted Record & Schema
             </span>
-          ))}
-        </div>
-      )}
-
-      {/* Description Snippet */}
-      {raw.description && (
-        <p className="text-xs text-slate-400 mt-3 line-clamp-2 leading-relaxed bg-[#0b0d18]/60 p-3 rounded-2xl border border-white/[0.04] font-medium">
-          {raw.description}
-        </p>
-      )}
-
-      {/* Expandable Raw Metadata Drawer */}
-      {isExpanded && (
-        <div className="mt-4 pt-4 border-t border-white/[0.06] space-y-2 animate-in fade-in duration-200">
-          <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
-            <span>Extracted Metadata Telemetry</span>
-            <span className="font-mono text-indigo-400 text-[10px]">webcmd Real Adapter</span>
+            <span className="text-[10px] text-slate-400 font-mono">
+              ID: {opportunity.id.slice(0, 8)}...
+            </span>
           </div>
-          <pre className="text-[11px] font-mono text-indigo-200/90 bg-[#080914] p-3.5 rounded-2xl overflow-x-auto border border-white/[0.06] max-h-48">
+
+          <pre className="p-4 rounded-2xl bg-[#070914] border border-white/[0.06] text-[11px] font-mono text-emerald-300/90 overflow-x-auto max-h-48 shadow-inner">
             {JSON.stringify(opportunity.raw_fields, null, 2)}
           </pre>
+
+          {/* Stage Quick Advancement Pills */}
+          {onStatusChange && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-2">
+              <span className="text-[10px] font-black uppercase text-slate-400 font-mono mr-1">
+                Move Stage:
+              </span>
+              {(["discovered", "interested", "applying", "applied", "selected"] as OpportunityStatus[]).map((st) => (
+                <button
+                  key={st}
+                  onClick={() => onStatusChange(opportunity.id, st)}
+                  className={`px-3 py-1 rounded-xl text-[10px] font-bold uppercase transition-all ${
+                    opportunity.status === st
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "bg-white/[0.03] text-slate-400 hover:text-white hover:bg-white/[0.08] border border-white/[0.05]"
+                  }`}
+                >
+                  {st}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
-
-      {/* Card Footer Actions & Lifecycle Control */}
-      <div className="mt-5 pt-3.5 border-t border-white/[0.06] flex flex-wrap items-center justify-between gap-3">
-        {/* Status Dropdown */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-400">Stage:</span>
-          <select
-            value={opportunity.status}
-            onChange={(e) => handleStatusChange(e.target.value as OpportunityStatus)}
-            disabled={isUpdating}
-            className="bg-[#121526] border border-white/[0.12] rounded-xl px-3 py-1.5 text-xs text-slate-100 font-bold focus:outline-none focus:border-indigo-500 transition-colors shadow-inner"
-          >
-            {statusOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex items-center gap-2.5">
-          {/* Toggle raw details */}
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="px-3 py-1.5 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] text-xs font-semibold flex items-center gap-1.5 transition-colors border border-transparent hover:border-white/[0.08]"
-          >
-            {isExpanded ? (
-              <>
-                <ChevronUp className="w-3.5 h-3.5" />
-                <span>Hide Meta</span>
-              </>
-            ) : (
-              <>
-                <ChevronDown className="w-3.5 h-3.5" />
-                <span>Inspect Meta</span>
-              </>
-            )}
-          </button>
-
-          {/* External Source Link */}
-          <a
-            href={opportunity.source_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600/30 to-purple-600/30 hover:from-indigo-600/50 hover:to-purple-600/50 text-indigo-200 hover:text-white border border-indigo-500/40 text-xs font-bold shadow-md shadow-indigo-500/10 hover:shadow-indigo-500/25 transition-all"
-          >
-            <span>Visit Listing</span>
-            <ExternalLink className="w-3 h-3" />
-          </a>
-        </div>
-      </div>
     </div>
   );
 }
