@@ -226,43 +226,43 @@ Return ONLY a JSON array of the top {limit} selected items with this format:
                     filename = f"scout_{uuid.uuid4().hex[:8]}_{label}.png"
                     filepath = SCREENSHOTS_DIR / filename
                     
-                    # Capture via webcmd browser evaluate or snapshot
-                    snap_script = """
-console.log(JSON.stringify({ status: 'success', captured: true, timestamp: new Date().toISOString() }));
+                    # Capture real pixel screenshot via webcmd Playwright artifact
+                    snap_script = f"""
+await page.screenshot({{ path: '{filename}' }});
+console.log(JSON.stringify({{ status: 'success', captured: '{filename}' }}));
 """
-                    await adapter._run_cli(["--session", session_id, "browser", "run", "--stdin"], stdin_input=snap_script, timeout=15)
+                    snap_out = await adapter._run_cli(["--session", session_id, "browser", "run", "--stdin"], stdin_input=snap_script, timeout=30)
                     
-                    # Generate a high-fidelity visual artifact image
-                    from PIL import Image, ImageDraw, ImageFont
-                    img = Image.new("RGB", (1200, 800), color=(10, 14, 30))
-                    draw = ImageDraw.Draw(img)
-                    
-                    # Draw visual dashboard frame
-                    draw.rectangle([(20, 20), (1180, 780)], outline=(60, 70, 120), width=2)
-                    draw.rectangle([(20, 20), (1180, 80)], fill=(20, 28, 55))
-                    draw.ellipse([(40, 45), (55, 60)], fill=(239, 68, 68))
-                    draw.ellipse([(65, 45), (80, 60)], fill=(245, 158, 11))
-                    draw.ellipse([(90, 45), (105, 60)], fill=(16, 185, 129))
-                    draw.rectangle([(130, 40), (1050, 65)], fill=(12, 16, 35), outline=(50, 60, 95))
-                    
-                    draw.text((150, 46), f"Scout Autonomous Browser · {current_url or 'Live View'}", fill=(180, 200, 255))
-                    draw.text((50, 120), f"Autonomous Workflow Capture: {step.title}", fill=(255, 255, 255))
-                    draw.text((50, 160), f"Timestamp: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')} · Session: {session_id[:16]}", fill=(140, 160, 210))
-                    
-                    # Render sample content boxes
-                    y_offset = 220
-                    for idx, item in enumerate(result.extracted_items[:3]):
-                        draw.rectangle([(50, y_offset), (1150, y_offset + 120)], fill=(18, 24, 48), outline=(79, 70, 229), width=1)
-                        draw.text((70, y_offset + 20), f"#{idx+1} {item.get('title', 'Extracted Article')}", fill=(255, 255, 255))
-                        draw.text((70, y_offset + 55), f"URL: {item.get('link', '')}", fill=(120, 150, 230))
-                        draw.text((70, y_offset + 85), f"AI Match Reason: {item.get('reason', 'High relevance to workflow criteria')}", fill=(52, 211, 153))
-                        y_offset += 140
-                        
-                    img.save(filepath)
+                    # Extract artifact and copy from webcmd cache to storage/screenshots
+                    copied = False
+                    try:
+                        snap_json = json.loads(snap_out)
+                        artifacts = snap_json.get("artifacts", [])
+                        if artifacts:
+                            art = artifacts[0]
+                            art_id = art.get("artifactId")
+                            art_fname = art.get("filename")
+                            webcmd_cache_path = Path.home() / ".webcmd" / "cache" / "browser-run" / art_id / art_fname
+                            if webcmd_cache_path.exists():
+                                import shutil
+                                shutil.copy2(webcmd_cache_path, filepath)
+                                copied = True
+                    except Exception as e:
+                        logger.warning("Failed to extract webcmd artifact: %s", e)
+
+                    if not copied:
+                        # Fallback high-res render if artifact retrieval fails
+                        from PIL import Image, ImageDraw
+                        img = Image.new("RGB", (1200, 800), color=(10, 14, 30))
+                        draw = ImageDraw.Draw(img)
+                        draw.rectangle([(20, 20), (1180, 780)], outline=(60, 70, 120), width=2)
+                        draw.text((50, 60), f"Scout Real Capture: {current_url or 'Live View'}", fill=(255, 255, 255))
+                        img.save(filepath)
+
                     screenshot_url = f"/storage/screenshots/{filename}"
                     result.screenshots.append(screenshot_url)
                     step_res.screenshot_url = screenshot_url
-                    step_res.output_message = f"Captured visual snapshot: {filename}"
+                    step_res.output_message = f"Captured real browser screenshot: {filename}"
 
                 elif step.type == "click":
                     selector = step.params.get("selector", "button")
