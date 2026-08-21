@@ -194,3 +194,40 @@ export async function fillForm(data: {
   });
   return res.json();
 }
+
+export async function fetchWorkflows(): Promise<{ total: number; workflows: import("./types").WorkflowDefinition[] }> {
+  const res = await fetch(`${BASE_URL}/api/workflows`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Failed to fetch workflows");
+  return res.json();
+}
+
+export async function synthesizeWorkflow(prompt: string): Promise<{ status: string; workflow: import("./types").WorkflowDefinition }> {
+  const res = await fetch(`${BASE_URL}/api/workflows/synthesize`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt }),
+  });
+  if (!res.ok) throw new Error("Failed to synthesize workflow");
+  return res.json();
+}
+
+export async function runWorkflow(workflow: import("./types").WorkflowDefinition): Promise<import("./types").WorkflowExecutionResult> {
+  const res = await fetch(`${BASE_URL}/api/workflows/run`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ workflow }),
+  });
+  if (!res.ok) throw new Error("Failed to execute workflow");
+  return res.json();
+}
+
+export async function saveWorkflow(workflow: import("./types").WorkflowDefinition): Promise<any> {
+  const res = await fetch(`${BASE_URL}/api/workflows/save`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(workflow),
+  });
+  return res.json();
+}

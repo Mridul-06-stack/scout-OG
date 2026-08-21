@@ -143,3 +143,45 @@ export interface VerticalInfo {
   schema_ref: string;
   categories: string[];
 }
+
+export interface WorkflowStep {
+  id: string;
+  type: string; // navigate, scroll, ai_filter, screenshot, click, fill, export
+  title: string;
+  description: string;
+  params: Record<string, any>;
+  icon?: string;
+}
+
+export interface WorkflowDefinition {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  steps: WorkflowStep[];
+  created_at?: string;
+}
+
+export interface StepExecutionResult {
+  step_id: string;
+  step_type: string;
+  title: string;
+  status: "success" | "error" | "skipped";
+  output_message: string;
+  data: Record<string, any>;
+  screenshot_url?: string | null;
+  duration_ms: number;
+}
+
+export interface WorkflowExecutionResult {
+  workflow_id: string;
+  status: "success" | "error" | "failed";
+  started_at: string;
+  finished_at?: string | null;
+  total_steps: number;
+  completed_steps: number;
+  step_results: StepExecutionResult[];
+  extracted_items: Array<Record<string, any>>;
+  screenshots: string[];
+  error?: string | null;
+}

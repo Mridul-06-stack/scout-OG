@@ -35,6 +35,13 @@ export default function Sidebar() {
       badgeColor: "bg-indigo-500/15 text-indigo-300 border-indigo-500/30"
     },
     { 
+      name: "Workflow Studio", 
+      href: "/workflows", 
+      icon: Layers,
+      badge: "No-Code",
+      badgeColor: "bg-purple-500/15 text-purple-300 border-purple-500/30"
+    },
+    { 
       name: "Learned Sources", 
       href: "/sources", 
       icon: Globe2,
