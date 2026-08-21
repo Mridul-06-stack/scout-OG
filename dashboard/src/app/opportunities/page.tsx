@@ -3,18 +3,19 @@
 import { useEffect, useState } from "react";
 import { 
   Search, 
-  Filter, 
   LayoutGrid, 
   Kanban, 
   RefreshCw, 
   GraduationCap, 
   Hotel,
-  Tag
+  GitBranch,
+  Filter,
+  Sparkles
 } from "lucide-react";
 import OpportunityCard from "@/components/OpportunityCard";
 import LifecycleBoard from "@/components/LifecycleBoard";
 import { fetchOpportunities, updateOpportunityStatus } from "@/lib/api";
-import { Opportunity, OpportunityStatus, ChangeType } from "@/lib/types";
+import { Opportunity, OpportunityStatus } from "@/lib/types";
 
 export default function OpportunitiesPage() {
   const [vertical, setVertical] = useState<string>("student_opportunities");
@@ -60,27 +61,35 @@ export default function OpportunitiesPage() {
   };
 
   return (
-    <div className="p-8 space-y-6 max-w-7xl mx-auto w-full">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-white/5">
-        <div>
-          <h2 className="text-2xl font-black tracking-tight text-white sm:text-3xl">
+    <div className="p-6 sm:p-10 space-y-6 max-w-7xl mx-auto w-full">
+      {/* ── Top Bento Header ── */}
+      <div className="bento-card p-6 sm:p-8 border border-white/[0.09] bg-gradient-to-r from-[#111326] via-[#141834] to-[#1a1236] flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden shadow-2xl">
+        <div className="space-y-1.5 z-10">
+          <div className="flex items-center gap-2">
+            <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+              Explorer & Pipeline
+            </span>
+            <span className="text-xs text-slate-400 font-medium">
+              {opportunities.length} Listings Active
+            </span>
+          </div>
+          <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-white">
             Opportunity Explorer
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Normalized across webcmd workflows · Ranked by user fit
+          <p className="text-xs sm:text-sm text-slate-300 font-medium">
+            Normalized across real webcmd workflows · Ranked by personal fit score
           </p>
         </div>
 
-        {/* Top Controls */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Vertical Toggle */}
-          <div className="bg-[#121422] p-1 rounded-2xl border border-white/10 flex flex-wrap items-center gap-1">
+        {/* Top Controls: Verticals & View Switcher */}
+        <div className="flex flex-wrap items-center gap-3 z-10">
+          {/* Vertical Toggle Pills */}
+          <div className="bg-[#0b0d1a]/90 p-1 rounded-2xl border border-white/[0.08] flex flex-wrap items-center gap-1 shadow-inner">
             <button
               onClick={() => setVertical("student_opportunities")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
                 vertical === "student_opportunities"
-                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
@@ -89,9 +98,9 @@ export default function OpportunitiesPage() {
             </button>
             <button
               onClick={() => setVertical("hotel_price_monitor")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
                 vertical === "hotel_price_monitor"
-                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                  ? "bg-amber-600 text-white shadow-lg shadow-amber-600/30"
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
@@ -100,54 +109,57 @@ export default function OpportunitiesPage() {
             </button>
             <button
               onClick={() => setVertical("github_issues_grants")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
                 vertical === "github_issues_grants"
-                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                  ? "bg-purple-600 text-white shadow-lg shadow-purple-600/30"
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              <span>🐙 GitHub & Grants</span>
+              <GitBranch className="w-3.5 h-3.5" />
+              <span>GitHub & Grants</span>
             </button>
           </div>
 
-          {/* View Mode Switcher */}
-          <div className="bg-[#121422] p-1 rounded-2xl border border-white/10 flex items-center gap-1">
+          {/* View Mode Switcher Pills */}
+          <div className="bg-[#0b0d1a]/90 p-1 rounded-2xl border border-white/[0.08] flex items-center gap-1 shadow-inner">
             <button
               onClick={() => setViewMode("list")}
-              className={`p-1.5 rounded-xl transition-all ${
+              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
                 viewMode === "list"
-                  ? "bg-indigo-600 text-white"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
                   : "text-slate-400 hover:text-slate-200"
               }`}
               title="Feed View"
             >
-              <LayoutGrid className="w-4 h-4" />
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Feed</span>
             </button>
             <button
               onClick={() => setViewMode("board")}
-              className={`p-1.5 rounded-xl transition-all ${
+              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
                 viewMode === "board"
-                  ? "bg-indigo-600 text-white"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
                   : "text-slate-400 hover:text-slate-200"
               }`}
               title="Kanban Board View"
             >
-              <Kanban className="w-4 h-4" />
+              <Kanban className="w-3.5 h-3.5" />
+              <span>Kanban</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="glass-panel rounded-2xl p-4 border border-white/5 flex flex-wrap items-center justify-between gap-4">
-        <form onSubmit={handleSearchSubmit} className="flex-1 min-w-[240px] relative">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+      {/* ── Search & Filter Bar Bento ── */}
+      <div className="bento-card p-4 border border-white/[0.08] flex flex-wrap items-center justify-between gap-4">
+        <form onSubmit={handleSearchSubmit} className="flex-1 min-w-[260px] relative">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search by title, location, or organization..."
+            placeholder="Search by title, location, skill, or organization..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-[#141624] border border-white/10 focus:border-indigo-500 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder-slate-500 outline-none transition-all"
+            className="w-full bg-[#121526] border border-white/[0.08] focus:border-indigo-500 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 outline-none transition-all shadow-inner font-sans"
           />
         </form>
 
@@ -156,7 +168,7 @@ export default function OpportunitiesPage() {
           <select
             value={selectedChangeType}
             onChange={(e) => setSelectedChangeType(e.target.value)}
-            className="bg-[#141624] border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-300 outline-none focus:border-indigo-500 font-medium"
+            className="bg-[#121526] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-slate-200 outline-none focus:border-indigo-500 font-bold shadow-inner"
           >
             <option value="">All Change Types</option>
             <option value="new">✨ New Today</option>
@@ -169,9 +181,9 @@ export default function OpportunitiesPage() {
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="bg-[#141624] border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-300 outline-none focus:border-indigo-500 font-medium"
+            className="bg-[#121526] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-slate-200 outline-none focus:border-indigo-500 font-bold shadow-inner"
           >
-            <option value="">All Lifecycle Stages</option>
+            <option value="">All Stages</option>
             <option value="discovered">Discovered</option>
             <option value="interested">Interested</option>
             <option value="applying">Applying</option>
@@ -181,15 +193,15 @@ export default function OpportunitiesPage() {
 
           <button
             onClick={loadOpportunities}
-            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+            className="p-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white border border-white/[0.08] transition-colors"
             title="Refresh list"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-indigo-400" : ""}`} />
           </button>
         </div>
       </div>
 
-      {/* Main Content: Card List or Kanban Board */}
+      {/* ── Main Content: Card List or Kanban Board ── */}
       {viewMode === "board" ? (
         <LifecycleBoard
           opportunities={opportunities}
@@ -198,10 +210,11 @@ export default function OpportunitiesPage() {
       ) : (
         <div className="space-y-4">
           {opportunities.length === 0 ? (
-            <div className="glass-panel rounded-3xl p-12 text-center border border-white/5 space-y-3">
-              <p className="text-sm font-bold text-white">No Matching Opportunities</p>
-              <p className="text-xs text-slate-500">
-                Try adjusting your search query or change type filter.
+            <div className="bento-card p-14 text-center border border-white/[0.08] space-y-3">
+              <Sparkles className="w-12 h-12 text-slate-500 mx-auto" />
+              <p className="text-base font-bold text-white">No Matching Opportunities</p>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto font-medium">
+                Try adjusting your search query, change type filter, or select another vertical.
               </p>
             </div>
           ) : (

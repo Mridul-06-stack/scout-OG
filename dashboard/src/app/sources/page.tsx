@@ -10,7 +10,10 @@ import {
   RefreshCw, 
   Activity, 
   ExternalLink,
-  Plus
+  Plus,
+  ShieldCheck,
+  Zap,
+  Code
 } from "lucide-react";
 import LearnSourceModal from "@/components/LearnSourceModal";
 import { fetchSources, removeSource } from "@/lib/api";
@@ -44,107 +47,120 @@ export default function SourcesPage() {
   };
 
   return (
-    <div className="p-8 space-y-6 max-w-7xl mx-auto w-full">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-white/5">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
-              webcmd Registry
+    <div className="p-6 sm:p-10 space-y-8 max-w-7xl mx-auto w-full">
+      {/* ── Top Header Bento ── */}
+      <div className="bento-card p-6 sm:p-8 border border-white/[0.09] bg-gradient-to-r from-[#111326] via-[#161a34] to-[#121428] flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-2xl relative overflow-hidden">
+        <div className="space-y-1.5 z-10">
+          <div className="flex items-center gap-2">
+            <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-1.5">
+              <Globe2 className="w-3.5 h-3.5 text-indigo-400" />
+              <span>webcmd Registry</span>
             </span>
-            <span className="text-xs text-slate-400">
-              Explore-Once · Reuse-Forever Workflows
+            <span className="text-xs text-slate-400 font-medium">
+              Explore Once · Reuse Forever
             </span>
           </div>
-          <h2 className="text-2xl font-black tracking-tight text-white sm:text-3xl">
+          <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-white">
             Learned Sources Registry
           </h2>
+          <p className="text-xs sm:text-sm text-slate-300 font-medium">
+            Active browser automation workflows cached and validated by the Scout crawler
+          </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 z-10">
           <button
             onClick={loadSources}
-            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+            className="p-2.5 rounded-2xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 hover:text-white border border-white/[0.08] transition-colors"
             title="Refresh Sources"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-indigo-400" : ""}`} />
           </button>
           <button
             onClick={() => setIsLearnModalOpen(true)}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2"
+            className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-black shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2 hover:scale-[1.02]"
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-4 h-4" />
             <span>Teach New Source</span>
           </button>
         </div>
       </div>
 
-      {/* Overview Stat Callout */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="glass-panel rounded-2xl p-4 border border-white/5 flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-            <Globe2 className="w-5 h-5" />
+      {/* ── Metric Bento Row ── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="bento-card p-6 border border-white/[0.08] bg-gradient-to-br from-indigo-950/30 to-[#0e1124] flex items-center gap-5 shadow-xl">
+          <div className="p-4 rounded-2xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 shadow-inner">
+            <Globe2 className="w-7 h-7" />
           </div>
-          <div>
-            <p className="text-xs text-slate-400 uppercase font-semibold">Learned Sites</p>
-            <h4 className="text-2xl font-black text-white font-mono">{sources.length}</h4>
+          <div className="space-y-0.5">
+            <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">Learned Sites</p>
+            <h4 className="text-3xl font-black text-white font-mono">{sources.length}</h4>
+            <p className="text-[11px] text-indigo-300/80 font-medium">Monitored persistently</p>
           </div>
         </div>
 
-        <div className="glass-panel rounded-2xl p-4 border border-white/5 flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            <CheckCircle2 className="w-5 h-5" />
+        <div className="bento-card p-6 border border-white/[0.08] bg-gradient-to-br from-emerald-950/30 to-[#0e1124] flex items-center gap-5 shadow-xl">
+          <div className="p-4 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-inner">
+            <CheckCircle2 className="w-7 h-7" />
           </div>
-          <div>
-            <p className="text-xs text-slate-400 uppercase font-semibold">Active & Healthy</p>
-            <h4 className="text-2xl font-black text-white font-mono">
+          <div className="space-y-0.5">
+            <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">Healthy & Active</p>
+            <h4 className="text-3xl font-black text-white font-mono">
               {sources.filter((s) => s.last_run_status === "success").length}
             </h4>
+            <p className="text-[11px] text-emerald-300/80 font-medium">Circuit breakers closed</p>
           </div>
         </div>
 
-        <div className="glass-panel rounded-2xl p-4 border border-white/5 flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
-            <AlertTriangle className="w-5 h-5" />
+        <div className="bento-card p-6 border border-white/[0.08] bg-gradient-to-br from-amber-950/30 to-[#0e1124] flex items-center gap-5 shadow-xl">
+          <div className="p-4 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 shadow-inner">
+            <AlertTriangle className="w-7 h-7" />
           </div>
-          <div>
-            <p className="text-xs text-slate-400 uppercase font-semibold">Needs Review (Circuit Breaker)</p>
-            <h4 className="text-2xl font-black text-white font-mono">
+          <div className="space-y-0.5">
+            <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">Needs Review</p>
+            <h4 className="text-3xl font-black text-white font-mono">
               {sources.filter((s) => s.last_run_status === "needs_review").length}
             </h4>
+            <p className="text-[11px] text-amber-300/80 font-medium">DOM changes detected</p>
           </div>
         </div>
       </div>
 
-      {/* Sources List */}
-      <div className="glass-panel rounded-3xl p-6 border border-white/5 space-y-4">
-        <h3 className="text-base font-bold text-white tracking-tight">
-          Active Extraction Workflows
-        </h3>
+      {/* ── Active Workflows Bento Grid List ── */}
+      <div className="bento-card p-6 sm:p-8 border border-white/[0.08] space-y-5 shadow-2xl">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-black text-white tracking-tight flex items-center gap-2">
+            <Zap className="w-5 h-5 text-indigo-400" />
+            <span>Registered Workflow Automations</span>
+          </h3>
+          <span className="text-xs text-slate-400 font-mono">
+            {sources.length} Active
+          </span>
+        </div>
 
         {sources.length === 0 ? (
-          <div className="py-12 text-center text-xs text-slate-500">
-            No sources registered yet. Run the pipeline or click &ldquo;Teach New Source&rdquo;.
+          <div className="py-14 text-center text-xs text-slate-500 font-medium">
+            No sources registered yet. Click &ldquo;Teach New Source&rdquo; to add a live website.
           </div>
         ) : (
-          <div className="divide-y divide-white/5">
+          <div className="space-y-3.5">
             {sources.map((src) => (
               <div
                 key={src.id}
-                className="py-4 flex flex-wrap items-center justify-between gap-4 first:pt-0 last:pb-0"
+                className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] hover:border-indigo-500/40 transition-all hover:bg-white/[0.04] flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
               >
-                <div className="flex items-start gap-3.5">
-                  <div className="p-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-indigo-400 mt-0.5">
-                    <Activity className="w-4 h-4" />
+                <div className="flex items-start gap-4">
+                  <div className="p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 group-hover:scale-105 transition-transform shrink-0 mt-0.5">
+                    <Activity className="w-5 h-5" />
                   </div>
 
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-bold text-sm text-white">
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <h4 className="font-extrabold text-base text-white group-hover:text-indigo-200 transition-colors">
                         {src.source_domain}
                       </h4>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-white/5 text-slate-400 border border-white/10">
-                        {src.strategy}
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-white/[0.06] text-indigo-300 border border-white/[0.08]">
+                        strategy: {src.strategy}
                       </span>
                     </div>
 
@@ -152,29 +168,29 @@ export default function SourcesPage() {
                       href={src.source_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-slate-400 hover:text-indigo-300 font-mono inline-flex items-center gap-1 mt-0.5"
+                      className="text-xs text-slate-400 hover:text-indigo-300 font-mono inline-flex items-center gap-1.5 transition-colors"
                     >
-                      <span>{src.source_url}</span>
-                      <ExternalLink className="w-2.5 h-2.5" />
+                      <span className="truncate max-w-md">{src.source_url}</span>
+                      <ExternalLink className="w-3 h-3 shrink-0" />
                     </a>
 
-                    <div className="flex flex-wrap items-center gap-3 mt-2 text-[11px] text-slate-500 font-mono">
-                      <span>Vertical: {src.vertical}</span>
+                    <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-400 font-mono pt-1">
+                      <span className="text-slate-300 font-semibold capitalize">Vertical: {src.vertical.replace(/_/g, " ")}</span>
                       <span>•</span>
                       <span>Schema: {src.extraction_schema_ref}</span>
                       {src.last_run_at && (
                         <>
                           <span>•</span>
-                          <span>Last run: {new Date(src.last_run_at).toLocaleTimeString()}</span>
+                          <span>Last scanned: {new Date(src.last_run_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         </>
                       )}
                     </div>
                   </div>
                 </div>
 
-                {/* Status and Actions */}
-                <div className="flex items-center gap-3">
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                {/* Status and Action Buttons */}
+                <div className="flex items-center gap-3 self-end sm:self-center">
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                     src.last_run_status === "success"
                       ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
                       : src.last_run_status === "needs_review"
@@ -186,7 +202,7 @@ export default function SourcesPage() {
 
                   <button
                     onClick={() => handleRemove(src.source_domain)}
-                    className="p-2 rounded-xl text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                    className="p-2.5 rounded-xl text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors border border-transparent hover:border-rose-500/20"
                     title="Remove Source"
                   >
                     <Trash2 className="w-4 h-4" />

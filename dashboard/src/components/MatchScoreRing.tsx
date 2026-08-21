@@ -8,45 +8,63 @@ interface MatchScoreRingProps {
 export default function MatchScoreRing({ score, size = "md" }: MatchScoreRingProps) {
   const percentage = Math.round(score * 100);
 
-  // Determine color theme based on score value
-  let strokeColor = "#10b981"; // emerald for >= 70%
+  // Gradient ID and color palette based on match tier
+  let gradientId = "emeraldGrad";
   let textColor = "text-emerald-400";
-  let bgGlow = "shadow-emerald-500/20";
+  let glowColor = "shadow-emerald-500/30";
+  let badgeLabel = "High Fit";
 
   if (percentage < 45) {
-    strokeColor = "#94a3b8"; // slate for low
+    gradientId = "slateGrad";
     textColor = "text-slate-400";
-    bgGlow = "shadow-slate-500/10";
+    glowColor = "shadow-slate-500/20";
+    badgeLabel = "Base";
   } else if (percentage < 70) {
-    strokeColor = "#f59e0b"; // amber for medium
-    textColor = "text-amber-400";
-    bgGlow = "shadow-amber-500/20";
+    gradientId = "indigoGrad";
+    textColor = "text-indigo-400";
+    glowColor = "shadow-indigo-500/30";
+    badgeLabel = "Good";
   }
 
   const dimensions = {
-    sm: { radius: 14, stroke: 2.5, width: 36, fontSize: "text-[10px]" },
-    md: { radius: 18, stroke: 3.5, width: 46, fontSize: "text-xs" },
-    lg: { radius: 24, stroke: 4.5, width: 60, fontSize: "text-sm" },
+    sm: { radius: 14, stroke: 3, width: 38, fontSize: "text-[10px]" },
+    md: { radius: 20, stroke: 4, width: 52, fontSize: "text-xs" },
+    lg: { radius: 28, stroke: 5, width: 70, fontSize: "text-sm" },
   }[size];
 
   const circumference = 2 * Math.PI * dimensions.radius;
-  const strokeDashoffset = circumference - (score * circumference);
+  const strokeDashoffset = circumference - (Math.min(score, 1.0) * circumference);
 
   return (
     <div
-      className={`relative inline-flex items-center justify-center rounded-full shadow-lg ${bgGlow}`}
-      title={`Match Score: ${percentage}%`}
+      className={`relative inline-flex items-center justify-center rounded-full shadow-lg ${glowColor} transition-transform hover:scale-110 duration-200`}
+      title={`Relevance Fit: ${percentage}% (${badgeLabel})`}
     >
       <svg
         width={dimensions.width}
         height={dimensions.width}
         className="transform -rotate-90"
       >
+        <defs>
+          <linearGradient id="emeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#10b981" />
+            <stop offset="100%" stopColor="#06b6d4" />
+          </linearGradient>
+          <linearGradient id="indigoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#6366f1" />
+            <stop offset="100%" stopColor="#a855f7" />
+          </linearGradient>
+          <linearGradient id="slateGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#94a3b8" />
+            <stop offset="100%" stopColor="#64748b" />
+          </linearGradient>
+        </defs>
+
         <circle
           cx={dimensions.width / 2}
           cy={dimensions.width / 2}
           r={dimensions.radius}
-          stroke="rgba(255, 255, 255, 0.1)"
+          stroke="rgba(255, 255, 255, 0.08)"
           strokeWidth={dimensions.stroke}
           fill="transparent"
         />
@@ -54,17 +72,17 @@ export default function MatchScoreRing({ score, size = "md" }: MatchScoreRingPro
           cx={dimensions.width / 2}
           cy={dimensions.width / 2}
           r={dimensions.radius}
-          stroke={strokeColor}
+          stroke={`url(#${gradientId})`}
           strokeWidth={dimensions.stroke}
           strokeDasharray={circumference}
           strokeDashoffset={strokeDashoffset}
           strokeLinecap="round"
           fill="transparent"
-          style={{ transition: "stroke-dashoffset 0.8s ease-in-out" }}
+          style={{ transition: "stroke-dashoffset 0.8s cubic-bezier(0.16, 1, 0.3, 1)" }}
         />
       </svg>
       <span
-        className={`absolute font-bold font-mono ${dimensions.fontSize} ${textColor}`}
+        className={`absolute font-black font-mono ${dimensions.fontSize} ${textColor}`}
       >
         {percentage}%
       </span>
