@@ -2,12 +2,13 @@
 
 Supports interactive action blocks:
 - navigate: Visit target URL with CloakBrowser
-- scroll: Infinite/paged scroll to discover dynamic content
-- ai_filter_extract: Extract page items and score/filter via gpt-4o-mini
+- scroll: Content-aware / semantic scroll to discover dynamic content
+- ai_filter: Extract page items and score/filter via gpt-4o-mini
+- extract_text: Dynamically extract and copy READMEs, articles, or documentation text
 - screenshot: Capture viewport, full page, or element screenshots
-- click: Interact with buttons or links
+- click: Interact with buttons, repo links, or articles
 - fill: Fill inputs
-- export: Save data and screenshot artifacts
+- export: Save data, text artifacts, and screenshot proofs
 """
 
 from __future__ import annotations
@@ -34,7 +35,7 @@ SCREENSHOTS_DIR.mkdir(parents=True, exist_ok=True)
 
 class WorkflowStep(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    type: str  # navigate, scroll, ai_filter, screenshot, click, fill, export
+    type: str  # navigate, scroll, ai_filter, extract_text, screenshot, click, fill, export
     title: str
     description: str = ""
     params: dict[str, Any] = Field(default_factory=dict)
@@ -70,6 +71,7 @@ class WorkflowExecutionResult(BaseModel):
     completed_steps: int = 0
     step_results: list[StepExecutionResult] = Field(default_factory=list)
     extracted_items: list[dict[str, Any]] = Field(default_factory=list)
+    extracted_text: str | None = None
     screenshots: list[str] = Field(default_factory=list)
     error: str | None = None
 
@@ -140,10 +142,13 @@ console.log(JSON.stringify({{ status: 'success', url: page.url(), title: await p
                     delay_ms = step.params.get("delay_ms", 1000)
                     target = step.params.get("target", "")
                     
+                    # Content-aware responsive scrolling: dynamically locates keywords (README, About, Details, etc.)
                     scroll_script = f"""
 try {{
-    // If step targets README or markdown article, scroll directly into it
-    const targetSel = '{target}' || ('{step.title.lower()}'.includes('readme') ? 'article.markdown-body, #readme, div[data-target="readme-toc.content"]' : '');
+    const explicitTarget = '{target}';
+    const isReadmeTarget = '{step.title.lower()}'.includes('readme') || '{step.description.lower()}'.includes('readme');
+    const targetSel = explicitTarget || (isReadmeTarget ? 'article.markdown-body, #readme, div[data-target="readme-toc.content"]' : '');
+    
     if (targetSel) {{
         const targetEl = page.locator(targetSel).first();
         if (await targetEl.count() > 0) {{
@@ -152,6 +157,26 @@ try {{
             console.log(JSON.stringify({{ status: 'success', scrolledTo: targetSel, finalHeight: await page.evaluate(() => window.scrollY) }}));
             return;
         }}
+    }}
+
+    // Dynamic heuristic: search for headings or sections matching semantic target
+    const foundKeyword = await page.evaluate((isReadme) => {{
+        const candidates = Array.from(document.querySelectorAll('h1, h2, h3, h4, section, article, div'));
+        const match = candidates.find(el => {{
+            const txt = (el.innerText || '').toLowerCase();
+            return isReadme ? txt.includes('readme') : (txt.includes('about') || txt.includes('getting started'));
+        }});
+        if (match) {{
+            match.scrollIntoView({{ behavior: 'smooth', block: 'start' }});
+            return true;
+        }}
+        return false;
+    }}, isReadmeTarget);
+
+    if (foundKeyword) {{
+        await page.waitForTimeout(1000);
+        console.log(JSON.stringify({{ status: 'success', matchedKeyword: true, finalHeight: await page.evaluate(() => window.scrollY) }}));
+        return;
     }}
 
     let finalHeight = 0;
@@ -167,8 +192,57 @@ try {{
 """
                     out = await adapter._run_cli(["--session", session_id, "browser", "run", "--stdin"], stdin_input=scroll_script, timeout=30)
                     scroll_data = _extract_json_from_webcmd(out) or {}
-                    step_res.output_message = f"Scrolled into target content / revealed dynamic elements."
+                    step_res.output_message = f"Responsively scrolled to content / revealed dynamic elements."
                     step_res.data = scroll_data
+
+                elif step.type == "extract_text":
+                    target_type = step.params.get("target", "readme")
+                    label = step.params.get("label", "Extracted Content")
+                    
+                    extract_text_script = """
+const textContent = await page.evaluate(() => {
+    // 1. Try markdown / readme containers first
+    const readmeEl = document.querySelector('article.markdown-body, #readme, div[data-target="readme-toc.content"], .markdown-body');
+    if (readmeEl && readmeEl.innerText && readmeEl.innerText.length > 50) {
+        return { source: 'readme_container', text: readmeEl.innerText.trim() };
+    }
+
+    // 2. Try article or main content tags
+    const articleEl = document.querySelector('article, main, .post-content, #content, .entry-content');
+    if (articleEl && articleEl.innerText && articleEl.innerText.length > 80) {
+        return { source: 'article_container', text: articleEl.innerText.trim() };
+    }
+
+    // 3. Heuristic: locate heading containing README or About and extract parent container text
+    const headings = Array.from(document.querySelectorAll('h1, h2, h3, h4'));
+    const matchedH = headings.find(h => {
+        const t = (h.innerText || '').toLowerCase();
+        return t.includes('readme') || t.includes('about') || t.includes('overview');
+    });
+    if (matchedH) {
+        const parent = matchedH.closest('section, article, div') || matchedH.parentElement;
+        if (parent && parent.innerText) {
+            return { source: 'heading_section', text: parent.innerText.trim() };
+        }
+    }
+
+    // 4. Fallback: clean body text
+    return { source: 'body_fallback', text: document.body.innerText.slice(0, 4000).trim() };
+});
+
+console.log(JSON.stringify({ status: 'success', text: textContent.text, source: textContent.source, length: textContent.text.length }));
+"""
+                    out = await adapter._run_cli(["--session", session_id, "browser", "run", "--stdin"], stdin_input=extract_text_script, timeout=30)
+                    extracted_text_data = _extract_json_from_webcmd(out) or {}
+                    extracted_body = extracted_text_data.get("text", "")
+                    
+                    result.extracted_text = extracted_body
+                    step_res.output_message = f"Extracted {len(extracted_body)} characters of {label} ({extracted_text_data.get('source', 'DOM')})."
+                    step_res.data = {
+                        "text": extracted_body,
+                        "character_count": len(extracted_body),
+                        "source": extracted_text_data.get("source"),
+                    }
 
                 elif step.type == "ai_filter":
                     criteria = step.params.get("criteria", "Find top 3 high quality, relevant articles")
@@ -326,8 +400,15 @@ try {{
                     step_res.data = click_data
 
                 elif step.type == "export":
-                    step_res.output_message = f"Exported {len(result.extracted_items)} items and {len(result.screenshots)} screenshots to gallery."
-                    step_res.data = {"items_count": len(result.extracted_items), "screenshots": result.screenshots}
+                    summary_msg = f"Exported {len(result.extracted_items)} items, {len(result.screenshots)} screenshots"
+                    if result.extracted_text:
+                        summary_msg += f", and {len(result.extracted_text)} chars of text"
+                    step_res.output_message = f"{summary_msg} to gallery."
+                    step_res.data = {
+                        "items_count": len(result.extracted_items),
+                        "screenshots": result.screenshots,
+                        "has_extracted_text": bool(result.extracted_text),
+                    }
 
                 step_res.duration_ms = int((asyncio.get_event_loop().time() - t0) * 1000)
                 result.step_results.append(step_res)

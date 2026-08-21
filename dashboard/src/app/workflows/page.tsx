@@ -1,17 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
-  Layers, 
-  Sparkles, 
   Play, 
-  Plus, 
-  Trash2, 
-  ArrowRight, 
-  ArrowDownCircle, 
+  Sparkles, 
   Globe, 
+  ArrowDownCircle, 
   Brain, 
   Camera, 
+  Layers, 
+  Trash2, 
+  Plus, 
   Save, 
   CheckCircle2, 
   AlertCircle, 
@@ -26,7 +25,9 @@ import {
   Eye,
   Sliders,
   Share2,
-  Maximize2
+  Maximize2,
+  Copy,
+  Check
 } from "lucide-react";
 import { 
   fetchWorkflows, 
@@ -42,10 +43,11 @@ import {
 
 const BLOCK_TYPES = [
   { type: "navigate", label: "Navigate URL", icon: Globe, color: "text-blue-400 border-blue-500/30 bg-blue-500/10", defaultParams: { url: "https://news.ycombinator.com" } },
-  { type: "scroll", label: "Smart Scroll", icon: ArrowDownCircle, color: "text-amber-400 border-amber-500/30 bg-amber-500/10", defaultParams: { scroll_times: 3, delay_ms: 1000 } },
+  { type: "scroll", label: "Smart Scroll", icon: ArrowDownCircle, color: "text-amber-400 border-amber-500/30 bg-amber-500/10", defaultParams: { scroll_times: 3, delay_ms: 1000, target: "" } },
+  { type: "click", label: "Click Element", icon: MousePointer, color: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10", defaultParams: { selector: "article.Box-row h2 a, h2 a, a" } },
+  { type: "extract_text", label: "Extract & Copy Text", icon: FileText, color: "text-teal-400 border-teal-500/30 bg-teal-500/10", defaultParams: { target: "readme", label: "README Documentation" } },
   { type: "ai_filter", label: "AI Content Filter", icon: Brain, color: "text-purple-400 border-purple-500/30 bg-purple-500/10", defaultParams: { criteria: "Find top 3 highest quality articles", limit: 3 } },
   { type: "screenshot", label: "Capture Screenshot", icon: Camera, color: "text-pink-400 border-pink-500/30 bg-pink-500/10", defaultParams: { label: "page_snapshot" } },
-  { type: "click", label: "Click Element", icon: MousePointer, color: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10", defaultParams: { selector: "button" } },
   { type: "export", label: "Export Artifacts", icon: Save, color: "text-cyan-400 border-cyan-500/30 bg-cyan-500/10", defaultParams: { notify: true } },
 ];
 
@@ -58,6 +60,7 @@ export default function WorkflowStudioPage() {
   const [executionResult, setExecutionResult] = useState<WorkflowExecutionResult | null>(null);
   const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [copiedText, setCopiedText] = useState(false);
 
   const loadAllWorkflows = async () => {
     try {
@@ -100,6 +103,7 @@ export default function WorkflowStudioPage() {
     if (!activeWorkflow) return;
     setRunning(true);
     setExecutionResult(null);
+    setCopiedText(false);
     try {
       const res = await runWorkflow(activeWorkflow);
       setExecutionResult(res);
@@ -111,6 +115,12 @@ export default function WorkflowStudioPage() {
     } finally {
       setRunning(false);
     }
+  };
+
+  const handleCopyText = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedText(true);
+    setTimeout(() => setCopiedText(false), 3000);
   };
 
   const handleSaveWorkflow = async () => {
@@ -132,7 +142,7 @@ export default function WorkflowStudioPage() {
 
     const newStep: WorkflowStep = {
       id: `step-${Date.now()}`,
-      type: blockDef.type,
+      type: blockDef.type as any,
       title: `${activeWorkflow.steps.length + 1}. ${blockDef.label}`,
       description: `Execute ${blockDef.label} action`,
       params: { ...blockDef.defaultParams },
@@ -163,11 +173,6 @@ export default function WorkflowStudioPage() {
     });
   };
 
-  const getIconForType = (type: string) => {
-    const found = BLOCK_TYPES.find((b) => b.type === type);
-    return found ? found.icon : Globe;
-  };
-
   return (
     <div className="p-6 sm:p-10 space-y-8 max-w-7xl mx-auto w-full">
       {/* ── Top Header Bento ── */}
@@ -185,7 +190,7 @@ export default function WorkflowStudioPage() {
             Visual Autonomous Workflow Studio
           </h2>
           <p className="text-xs sm:text-sm text-slate-300 font-medium">
-            Build custom browser agents visually · Scroll feeds · Filter with AI · Capture screenshots · Zero code needed
+            Build custom browser agents visually · Scroll feeds · Extract & copy READMEs · Filter with AI · Capture screenshots · Zero code needed
           </p>
         </div>
 
@@ -230,7 +235,7 @@ export default function WorkflowStudioPage() {
         <div className="flex flex-col sm:flex-row items-stretch gap-3">
           <input
             type="text"
-            placeholder="Type any goal in plain English (e.g. 'Scroll AI blog posts and take screenshots', 'Track stock market movers', 'Find good first issues on GitHub')"
+            placeholder="Type any goal in plain English (e.g. 'Find good first issues on GitHub, scroll to README, copy its text, and take a screenshot')"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSynthesize()}
@@ -259,9 +264,9 @@ export default function WorkflowStudioPage() {
         <div className="flex flex-wrap items-center gap-2 pt-1">
           <span className="text-[10px] text-slate-500 uppercase font-mono font-bold">Try ideas:</span>
           {[
+            "Find GitHub trending repos, click first repo, and copy its README text",
             "Scroll tech blog page, find good AI articles and take screenshots",
             "Monitor trending stocks and capture chart snapshots",
-            "Find good-first-issue GitHub bounties and snapshot READMEs",
             "Scan hackathon portal and pre-fill application questions",
             "Explore top AI tools on Product Hunt and extract launches",
           ].map((example, i) => (
@@ -399,25 +404,64 @@ export default function WorkflowStudioPage() {
                           </div>
                         )}
 
-                        {step.type === "scroll" && (
-                          <div className="grid grid-cols-2 gap-2">
+                        {step.type === "click" && (
+                          <div>
+                            <label className="block text-[10px] text-slate-400 font-mono uppercase mb-1">Target Selector / Link</label>
+                            <input
+                              type="text"
+                              value={step.params.selector || ""}
+                              onChange={(e) => updateStepParam(idx, "selector", e.target.value)}
+                              className="w-full bg-[#121528] border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-[11px] text-white font-mono outline-none"
+                              placeholder="e.g. article.Box-row h2 a, h2 a, a"
+                            />
+                          </div>
+                        )}
+
+                        {step.type === "extract_text" && (
+                          <div className="space-y-2">
                             <div>
-                              <label className="block text-[10px] text-slate-400 font-mono uppercase mb-1">Scroll Times</label>
+                              <label className="block text-[10px] text-slate-400 font-mono uppercase mb-1">Content Target</label>
                               <input
-                                type="number"
-                                value={step.params.scroll_times || 3}
-                                onChange={(e) => updateStepParam(idx, "scroll_times", Number(e.target.value))}
+                                type="text"
+                                value={step.params.target || "readme"}
+                                onChange={(e) => updateStepParam(idx, "target", e.target.value)}
                                 className="w-full bg-[#121528] border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-[11px] text-white font-mono outline-none"
+                                placeholder="readme | article | auto"
                               />
                             </div>
                             <div>
-                              <label className="block text-[10px] text-slate-400 font-mono uppercase mb-1">Delay (ms)</label>
+                              <label className="block text-[10px] text-slate-400 font-mono uppercase mb-1">Content Label</label>
                               <input
-                                type="number"
-                                value={step.params.delay_ms || 1000}
-                                onChange={(e) => updateStepParam(idx, "delay_ms", Number(e.target.value))}
+                                type="text"
+                                value={step.params.label || "README Content"}
+                                onChange={(e) => updateStepParam(idx, "label", e.target.value)}
                                 className="w-full bg-[#121528] border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-[11px] text-white font-mono outline-none"
                               />
+                            </div>
+                          </div>
+                        )}
+
+                        {step.type === "scroll" && (
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-[10px] text-slate-400 font-mono uppercase mb-1">Scroll Times</label>
+                                <input
+                                  type="number"
+                                  value={step.params.scroll_times || 3}
+                                  onChange={(e) => updateStepParam(idx, "scroll_times", Number(e.target.value))}
+                                  className="w-full bg-[#121528] border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-[11px] text-white font-mono outline-none"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] text-slate-400 font-mono uppercase mb-1">Delay (ms)</label>
+                                <input
+                                  type="number"
+                                  value={step.params.delay_ms || 1000}
+                                  onChange={(e) => updateStepParam(idx, "delay_ms", Number(e.target.value))}
+                                  className="w-full bg-[#121528] border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-[11px] text-white font-mono outline-none"
+                                />
+                              </div>
                             </div>
                           </div>
                         )}
@@ -509,6 +553,38 @@ export default function WorkflowStudioPage() {
               ))}
             </div>
           </div>
+
+          {/* ── Extracted Live Text / README Box (if available) ── */}
+          {executionResult.extracted_text && (
+            <div className="space-y-3 pt-4 border-t border-white/[0.08] animate-in fade-in">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <span className="text-xs font-black uppercase tracking-wider text-teal-300 font-mono flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-teal-400" />
+                  Extracted Live Content & Documentation ({executionResult.extracted_text.length} Characters):
+                </span>
+                <button
+                  onClick={() => handleCopyText(executionResult.extracted_text!)}
+                  className="px-4 py-2 rounded-xl bg-teal-500/20 hover:bg-teal-500/30 text-teal-200 border border-teal-500/40 text-xs font-black transition-all flex items-center gap-2 shadow-lg shadow-teal-500/10 hover:scale-105"
+                >
+                  {copiedText ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      <span>Copied to Clipboard!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4 text-teal-300" />
+                      <span>Copy Full Output</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-[#090d1f] border border-teal-500/20 shadow-inner font-mono text-xs text-slate-200 max-h-96 overflow-y-auto whitespace-pre-wrap leading-relaxed select-text selection:bg-teal-500/30">
+                {executionResult.extracted_text}
+              </div>
+            </div>
+          )}
 
           {/* Extracted Items / Articles Table */}
           {executionResult.extracted_items && executionResult.extracted_items.length > 0 && (

@@ -264,15 +264,18 @@ CRITICAL RULES:
 2. If the user does NOT explicitly specify a URL in their prompt, you MUST autonomously choose the best REAL-WORLD, LIVE, HIGH-TRAFFIC URL matching their topic (e.g. https://news.ycombinator.com, https://techcrunch.com/category/artificial-intelligence/, https://finance.yahoo.com/trending-tickers, https://unstop.com/hackathons, https://github.com/trending, https://www.producthunt.com).
 3. If the user asks to inspect details, open articles, or snapshot READMEs / subpages:
    - Include a 'click' step targeting the item (e.g. selector: "article.Box-row h2 a, h2 a, a[href*='/'].text-bold" for GitHub repos, or "article h2 a, a" for blog articles).
-   - Follow it with a 'scroll' step and then a 'screenshot' step with a label like "readme_snapshot" or "article_detail".
-4. Recommended default target URL for this request: {smart_seed_url}
+   - Follow it with a 'scroll' step and then a 'screenshot' step.
+4. If the user asks to copy, scrape, or extract text/content (like "copy the readme", "extract article content", "get markdown"):
+   - Include an 'extract_text' step (e.g. params: {{"target": "readme", "label": "Repository README"}}).
+5. Recommended default target URL for this request: {smart_seed_url}
 
 Supported action block types:
 - "navigate": {{"url": "https://..."}}
-- "scroll": {{"scroll_times": 3, "delay_ms": 1000}}
+- "scroll": {{"scroll_times": 3, "delay_ms": 1000, "target": ""}}
+- "click": {{"selector": "css_selector_or_tag"}}
+- "extract_text": {{"target": "readme" | "article" | "auto", "label": "Description"}}
 - "ai_filter": {{"criteria": "What to extract/filter", "limit": 3}}
 - "screenshot": {{"label": "descriptive_name"}}
-- "click": {{"selector": "css_selector_or_tag"}}
 - "fill": {{"fields": {{"selector": "value"}}}}
 - "export": {{"notify": true}}
 
@@ -284,11 +287,11 @@ Output ONLY valid JSON matching this schema:
   "steps": [
     {{
       "id": "step-1",
-      "type": "navigate" | "scroll" | "ai_filter" | "screenshot" | "click" | "fill" | "export",
+      "type": "navigate" | "scroll" | "click" | "extract_text" | "ai_filter" | "screenshot" | "fill" | "export",
       "title": "Short Step Title",
       "description": "What this step performs",
       "params": {{}},
-      "icon": "Globe" | "ArrowDownCircle" | "Brain" | "Camera" | "MousePointer" | "Save"
+      "icon": "Globe" | "ArrowDownCircle" | "MousePointer" | "FileText" | "Brain" | "Camera" | "Save"
     }}
   ]
 }}"""

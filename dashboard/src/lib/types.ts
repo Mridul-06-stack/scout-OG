@@ -146,7 +146,7 @@ export interface VerticalInfo {
 
 export interface WorkflowStep {
   id: string;
-  type: string; // navigate, scroll, ai_filter, screenshot, click, fill, export
+  type: "navigate" | "scroll" | "ai_filter" | "extract_text" | "screenshot" | "click" | "fill" | "export";
   title: string;
   description: string;
   params: Record<string, any>;
@@ -182,6 +182,7 @@ export interface WorkflowExecutionResult {
   completed_steps: number;
   step_results: StepExecutionResult[];
   extracted_items: Array<Record<string, any>>;
+  extracted_text?: string | null;
   screenshots: string[];
   error?: string | null;
 }
