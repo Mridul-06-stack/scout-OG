@@ -424,19 +424,69 @@ console.log(JSON.stringify({{ status: 'success', captured: '{filename}' }}));
                     step_res.output_message = f"Captured real browser screenshot: {filename}"
 
                 elif step.type == "click":
-                    selector = step.params.get("selector", "button")
+                    raw_selector = step.params.get("selector", "button")
+                    intent_text = f"{step.title} {step.description} {raw_selector}".lower()
+                    is_star_action = "star" in intent_text
+                    is_multi_star = is_star_action and ("3" in intent_text or "top" in intent_text or "each" in intent_text or "all" in intent_text)
+                    limit_count = 3 if ("3" in intent_text or "top" in intent_text) else 1
+
                     click_script = f"""
 try {{
+    const isStar = {str(is_star_action).lower()};
+    const isMulti = {str(is_multi_star).lower()};
+    const limit = {limit_count};
+
+    if (isStar) {{
+        const starResult = await page.evaluate((args) => {{
+            const rows = document.querySelectorAll('article.Box-row, .repo-list-item, [data-hydro-click*="STAR"]');
+            const clicked = [];
+            if (rows.length > 0) {{
+                const maxClicks = args.isMulti ? Math.min(args.limit, rows.length) : 1;
+                for (let i = 0; i < maxClicks; i++) {{
+                    const row = rows[i];
+                    const titleEl = row.querySelector('h2 a, article h2 a, a[href*="/"].text-bold, h2');
+                    const repoTitle = titleEl ? titleEl.innerText.trim() : ('Repo #' + (i + 1));
+                    const starBtn = row.querySelector('button[aria-label*="Star"], button[aria-label*="star"], form[action*="star"] button, button:has(svg.octicon-star), button[data-hydro-click*="STAR"], button[data-hydro-click*="star"], button[value="Star"]');
+                    if (starBtn) {{
+                        starBtn.click();
+                        clicked.push(repoTitle);
+                    }}
+                }}
+            }}
+            if (clicked.length === 0) {{
+                const repoStarBtn = document.querySelector('#star-button, form.unstarred button, [aria-label*="Star this repository"]');
+                if (repoStarBtn) {{
+                    repoStarBtn.click();
+                    clicked.push(document.title || 'Current Repository');
+                }}
+            }}
+            return clicked;
+        }}, {{ isMulti, limit }});
+
+        if (starResult && starResult.length > 0) {{
+            await page.waitForTimeout(2000);
+            console.log(JSON.stringify({{ status: 'success', action: 'star', clickedItems: starResult, current_url: page.url() }}));
+            return;
+        }}
+    }}
+
+    // Generic Click with Cascading Fallbacks & Heuristics
     let clicked = false;
-    // 1. Try direct locator
-    const loc = page.locator('{selector}').first();
-    if (await loc.count() > 0) {{
-        await loc.click({{ timeout: 8000 }});
+    const directLoc = page.locator('{raw_selector}').first();
+    if (await directLoc.count() > 0) {{
+        await directLoc.click({{ timeout: 8000 }});
         clicked = true;
     }} else {{
-        // 2. Try common repository / blog article link fallbacks if generic
-        const fallbacks = ['article.Box-row h2 a', 'article h2 a', 'h2 a', 'a[href*="/"]', 'button', 'a'];
-        for (const fb of fallbacks) {{
+        // Semantic selector cascades
+        const semanticFallbacks = [
+            'button[aria-label*="Star"], form[action*="star"] button',
+            'article.Box-row h2 a, h2 a, a[href*="/"].text-bold',
+            'article h2 a, a.storylink, .titleline > a',
+            'button:has-text("Star"), button:has-text("Submit"), button:has-text("Apply")',
+            'button[type="submit"], input[type="submit"]',
+            'button, a'
+        ];
+        for (const fb of semanticFallbacks) {{
             const fbLoc = page.locator(fb).first();
             if (await fbLoc.count() > 0) {{
                 await fbLoc.click({{ timeout: 6000 }});
@@ -445,24 +495,31 @@ try {{
             }}
         }}
     }}
-    
+
     if (clicked) {{
         await page.waitForLoadState('domcontentloaded', {{ timeout: 15000 }}).catch(() => {{}});
-        await page.waitForTimeout(2000);
-        console.log(JSON.stringify({{ status: 'success', clicked: '{selector}', current_url: page.url() }}));
+        await page.waitForTimeout(1500);
+        console.log(JSON.stringify({{ status: 'success', clicked: '{raw_selector}', current_url: page.url() }}));
     }} else {{
-        console.log(JSON.stringify({{ status: 'not_found', selector: '{selector}' }}));
+        console.log(JSON.stringify({{ status: 'not_found', selector: '{raw_selector}' }}));
     }}
 }} catch (err) {{
     console.log(JSON.stringify({{ status: 'error', message: err.message }}));
 }}
 """
-                    out = await adapter._run_cli(["--session", session_id, "browser", "run", "--stdin"], stdin_input=click_script, timeout=25)
+                    out = await adapter._run_cli(["--session", session_id, "browser", "run", "--stdin"], stdin_input=click_script, timeout=30)
                     click_data = _extract_json_from_webcmd(out) or {}
                     new_url = click_data.get("current_url")
                     if new_url:
                         current_url = new_url
-                    step_res.output_message = f"Clicked '{selector}' — Navigated to: {current_url or 'Page Loaded'}"
+
+                    clicked_items = click_data.get("clickedItems", [])
+                    if clicked_items:
+                        step_res.output_message = f"Successfully starred {len(clicked_items)} items: {', '.join(clicked_items[:3])}"
+                    elif click_data.get("status") == "success":
+                        step_res.output_message = f"Clicked target element — Navigated to: {current_url or 'Target Page'}"
+                    else:
+                        step_res.output_message = f"Attempted click on '{raw_selector}' ({click_data.get('status', 'not_found')})"
                     step_res.data = click_data
 
                 elif step.type == "export":
