@@ -190,7 +190,7 @@
     "strategy": "intercepted_api",
     "extraction_schema_ref": "opportunity_schema.json",
     "compiled_command_ref": "webcmd_explore_github_com",
-    "last_run_at": "2026-08-21T13:04:05.030494",
+    "last_run_at": "2026-08-21T13:55:26.084315",
     "last_run_status": "success",
     "consecutive_failures": 0,
     "requires_approval_for": []
@@ -204,7 +204,7 @@
     "strategy": "public_dom",
     "extraction_schema_ref": "opportunity_schema.json",
     "compiled_command_ref": "webcmd_explore_gitcoin_co",
-    "last_run_at": "2026-08-21T13:04:15.725548",
+    "last_run_at": "2026-08-21T13:55:29.734772",
     "last_run_status": "success",
     "consecutive_failures": 0,
     "requires_approval_for": []
@@ -218,7 +218,7 @@
     "strategy": "public_dom",
     "extraction_schema_ref": "opportunity_schema.json",
     "compiled_command_ref": "webcmd_explore_web3_foundation",
-    "last_run_at": "2026-08-21T13:04:28.489346",
+    "last_run_at": "2026-08-21T13:55:33.788857",
     "last_run_status": "success",
     "consecutive_failures": 0,
     "requires_approval_for": []

@@ -1,6 +1,6 @@
 [
   {
-    "name": "Rust Lang Easy Issues",
+    "name": "Rust Compiler Good First Issues",
     "url": "https://github.com/rust-lang/rust/issues?q=is%3Aissue+is%3Aopen+label%3AE-easy",
     "categories": ["good_first_issue", "open_source"]
   },
@@ -10,18 +10,33 @@
     "categories": ["good_first_issue", "open_source"]
   },
   {
-    "name": "Flask Good First Issues",
+    "name": "Kubernetes Beginner Issues",
+    "url": "https://github.com/kubernetes/kubernetes/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22",
+    "categories": ["good_first_issue", "open_source"]
+  },
+  {
+    "name": "Flask Starter Issues",
     "url": "https://github.com/pallets/flask/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22",
     "categories": ["good_first_issue", "open_source"]
   },
   {
-    "name": "Gitcoin Developer Grants",
+    "name": "Gitcoin Open Grants",
     "url": "https://gitcoin.co/grants",
     "categories": ["grant", "bounty"]
   },
   {
-    "name": "Web3 Foundation Grants Program",
+    "name": "Web3 Foundation Grants",
     "url": "https://web3.foundation/grants/",
     "categories": ["grant", "open_source"]
+  },
+  {
+    "name": "Solana Foundation Grants",
+    "url": "https://solana.foundation/grants",
+    "categories": ["grant", "bounty"]
+  },
+  {
+    "name": "Algorand Developer Ecosystem Grants",
+    "url": "https://algorand.foundation/dev-grants",
+    "categories": ["grant", "bounty"]
   }
 ]
