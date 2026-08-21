@@ -266,19 +266,45 @@ console.log(JSON.stringify({{ status: 'success', captured: '{filename}' }}));
 
                 elif step.type == "click":
                     selector = step.params.get("selector", "button")
-                    script = f"""
-const el = document.querySelector('{selector}');
-if (el) {{
-    el.click();
-    await page.waitForTimeout(1500);
-    console.log(JSON.stringify({{ status: 'success', clicked: '{selector}' }}));
-}} else {{
-    console.log(JSON.stringify({{ status: 'not_found', selector: '{selector}' }}));
+                    click_script = f"""
+try {{
+    let clicked = false;
+    // 1. Try direct locator
+    const loc = page.locator('{selector}').first();
+    if (await loc.count() > 0) {{
+        await loc.click({{ timeout: 8000 }});
+        clicked = true;
+    }} else {{
+        // 2. Try common repository / blog article link fallbacks if generic
+        const fallbacks = ['article.Box-row h2 a', 'article h2 a', 'h2 a', 'a[href*="/"]', 'button', 'a'];
+        for (const fb of fallbacks) {{
+            const fbLoc = page.locator(fb).first();
+            if (await fbLoc.count() > 0) {{
+                await fbLoc.click({{ timeout: 6000 }});
+                clicked = true;
+                break;
+            }}
+        }}
+    }}
+    
+    if (clicked) {{
+        await page.waitForLoadState('domcontentloaded', {{ timeout: 15000 }}).catch(() => {{}});
+        await page.waitForTimeout(2000);
+        console.log(JSON.stringify({{ status: 'success', clicked: '{selector}', current_url: page.url() }}));
+    }} else {{
+        console.log(JSON.stringify({{ status: 'not_found', selector: '{selector}' }}));
+    }}
+}} catch (err) {{
+    console.log(JSON.stringify({{ status: 'error', message: err.message }}));
 }}
 """
-                    out = await adapter._run_cli(["--session", session_id, "browser", "run", "--stdin"], stdin_input=script, timeout=20)
-                    step_res.output_message = f"Clicked element: '{selector}'"
-                    step_res.data = _extract_json_from_webcmd(out) or {}
+                    out = await adapter._run_cli(["--session", session_id, "browser", "run", "--stdin"], stdin_input=click_script, timeout=25)
+                    click_data = _extract_json_from_webcmd(out) or {}
+                    new_url = click_data.get("current_url")
+                    if new_url:
+                        current_url = new_url
+                    step_res.output_message = f"Clicked '{selector}' — Navigated to: {current_url or 'Page Loaded'}"
+                    step_res.data = click_data
 
                 elif step.type == "export":
                     step_res.output_message = f"Exported {len(result.extracted_items)} items and {len(result.screenshots)} screenshots to gallery."

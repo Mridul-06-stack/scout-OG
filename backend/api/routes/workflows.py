@@ -262,14 +262,17 @@ async def synthesize_workflow(req: SynthesizeRequest):
 CRITICAL RULES:
 1. NEVER output 'example.com', 'your-site.com', or generic placeholders for the 'navigate' URL.
 2. If the user does NOT explicitly specify a URL in their prompt, you MUST autonomously choose the best REAL-WORLD, LIVE, HIGH-TRAFFIC URL matching their topic (e.g. https://news.ycombinator.com, https://techcrunch.com/category/artificial-intelligence/, https://finance.yahoo.com/trending-tickers, https://unstop.com/hackathons, https://github.com/trending, https://www.producthunt.com).
-3. Recommended default target URL for this request: {smart_seed_url}
+3. If the user asks to inspect details, open articles, or snapshot READMEs / subpages:
+   - Include a 'click' step targeting the item (e.g. selector: "article.Box-row h2 a, h2 a, a[href*='/'].text-bold" for GitHub repos, or "article h2 a, a" for blog articles).
+   - Follow it with a 'scroll' step and then a 'screenshot' step with a label like "readme_snapshot" or "article_detail".
+4. Recommended default target URL for this request: {smart_seed_url}
 
 Supported action block types:
 - "navigate": {{"url": "https://..."}}
 - "scroll": {{"scroll_times": 3, "delay_ms": 1000}}
 - "ai_filter": {{"criteria": "What to extract/filter", "limit": 3}}
 - "screenshot": {{"label": "descriptive_name"}}
-- "click": {{"selector": "css_selector"}}
+- "click": {{"selector": "css_selector_or_tag"}}
 - "fill": {{"fields": {{"selector": "value"}}}}
 - "export": {{"notify": true}}
 
