@@ -22,7 +22,7 @@
     "strategy": "public_dom",
     "extraction_schema_ref": "opportunity_schema.json",
     "compiled_command_ref": "mock_cmd_mlh.io",
-    "last_run_at": "2026-08-21T12:05:12.258326",
+    "last_run_at": "2026-08-21T12:18:49.470986",
     "last_run_status": "success",
     "consecutive_failures": 0,
     "requires_approval_for": []
@@ -36,7 +36,7 @@
     "strategy": "public_dom",
     "extraction_schema_ref": "opportunity_schema.json",
     "compiled_command_ref": "mock_cmd_devfolio.co",
-    "last_run_at": "2026-08-21T12:05:15.895143",
+    "last_run_at": "2026-08-21T12:18:53.528180",
     "last_run_status": "success",
     "consecutive_failures": 0,
     "requires_approval_for": []
@@ -50,7 +50,7 @@
     "strategy": "public_dom",
     "extraction_schema_ref": "opportunity_schema.json",
     "compiled_command_ref": "mock_cmd_unstop.com",
-    "last_run_at": "2026-08-21T12:05:19.727262",
+    "last_run_at": "2026-08-21T12:18:57.270751",
     "last_run_status": "success",
     "consecutive_failures": 0,
     "requires_approval_for": []
@@ -78,7 +78,7 @@
     "strategy": "public_dom",
     "extraction_schema_ref": "opportunity_schema.json",
     "compiled_command_ref": "mock_cmd_www.outreachy.org",
-    "last_run_at": "2026-08-21T12:05:23.797663",
+    "last_run_at": "2026-08-21T12:19:02.219057",
     "last_run_status": "success",
     "consecutive_failures": 0,
     "requires_approval_for": []
@@ -92,7 +92,7 @@
     "strategy": "public_dom",
     "extraction_schema_ref": "opportunity_schema.json",
     "compiled_command_ref": "mock_cmd_www.mitacs.ca",
-    "last_run_at": "2026-08-21T12:05:27.705903",
+    "last_run_at": "2026-08-21T12:19:06.663796",
     "last_run_status": "success",
     "consecutive_failures": 0,
     "requires_approval_for": []
@@ -106,7 +106,7 @@
     "strategy": "public_dom",
     "extraction_schema_ref": "opportunity_schema.json",
     "compiled_command_ref": "mock_cmd_sih.gov.in",
-    "last_run_at": "2026-08-21T12:05:31.479984",
+    "last_run_at": "2026-08-21T12:19:10.920720",
     "last_run_status": "success",
     "consecutive_failures": 0,
     "requires_approval_for": []
