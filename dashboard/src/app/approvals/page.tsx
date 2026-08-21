@@ -15,7 +15,12 @@ import {
   Loader2,
   ExternalLink,
   ArrowRight,
-  Bot
+  Bot,
+  Brain,
+  Calculator,
+  UserCheck,
+  HelpCircle,
+  AlertCircle
 } from "lucide-react";
 import ApprovalCard from "@/components/ApprovalCard";
 import { fetchApprovals, simulateApprovalAction, fillForm } from "@/lib/api";
@@ -81,6 +86,32 @@ export default function ApprovalsPage() {
     }
   };
 
+  const getSourceBadge = (source?: string) => {
+    switch (source) {
+      case "math_logic":
+        return {
+          label: "🧮 Math & Logic",
+          color: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+        };
+      case "knowledge":
+        return {
+          label: "💡 Knowledge",
+          color: "bg-purple-500/15 text-purple-300 border-purple-500/30",
+        };
+      case "ai_synthesis":
+        return {
+          label: "✨ AI Synthesis",
+          color: "bg-pink-500/15 text-pink-300 border-pink-500/30",
+        };
+      case "vault":
+      default:
+        return {
+          label: "🏛️ Identity Vault",
+          color: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
+        };
+    }
+  };
+
   const pending = approvals.filter((a) => a.status === "pending");
   const resolved = approvals.filter((a) => a.status !== "pending");
 
@@ -98,10 +129,10 @@ export default function ApprovalsPage() {
             </span>
           </div>
           <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-white">
-            Approval Gate & Form Automation
+            Approval Gate & AI Form Agent
           </h2>
           <p className="text-xs sm:text-sm text-slate-300 font-medium">
-            Autonomous webcmd form filler · Human checkpoint before any real submission
+            Intelligent reasoning form solver · Draws from your Identity Vault · Zero unapproved writes
           </p>
         </div>
 
@@ -116,22 +147,22 @@ export default function ApprovalsPage() {
         </div>
       </div>
 
-      {/* ── Google Form Auto-Fill Live Sandbox Bento ── */}
-      <div className="bento-card p-6 sm:p-8 border border-indigo-500/30 bg-gradient-to-br from-indigo-950/40 via-purple-950/20 to-[#0e1124] space-y-5 shadow-2xl relative overflow-hidden">
+      {/* ── Google Form & Web Form Auto-Filler Bento ── */}
+      <div className="bento-card p-6 sm:p-8 border border-indigo-500/30 bg-gradient-to-br from-indigo-950/40 via-purple-950/20 to-[#0e1124] space-y-6 shadow-2xl relative overflow-hidden">
         <div className="absolute -top-10 -right-10 w-60 h-60 bg-gradient-to-bl from-indigo-500/20 to-purple-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="flex items-center justify-between relative z-10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="p-2 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                <FileText className="w-5 h-5 text-indigo-400" />
+              <span className="p-2.5 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                <Brain className="w-5 h-5 text-indigo-400" />
               </span>
               <h3 className="text-base sm:text-lg font-black text-white">
-                Live Google Form & Web Form Auto-Filler
+                Intelligent AI Form Agent (Google Forms & Government Portals)
               </h3>
             </div>
             <p className="text-xs text-slate-300 font-medium">
-              Paste ANY Google Form URL or registration link. Scout's <code className="text-indigo-300 font-mono">webcmd CloakBrowser</code> will inspect input fields and type your profile data!
+              Scout reads every question context, solves math/logic/essays via <code className="text-indigo-300 font-mono">gpt-4o-mini</code>, and types accurate responses!
             </p>
           </div>
         </div>
@@ -156,12 +187,12 @@ export default function ApprovalsPage() {
               {formFilling ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>webcmd Typing Form...</span>
+                  <span>AI Reasoning & Typing...</span>
                 </>
               ) : (
                 <>
-                  <Bot className="w-4 h-4" />
-                  <span>Auto-Fill Form Now</span>
+                  <Sparkles className="w-4 h-4" />
+                  <span>Intelligently Auto-Fill Form</span>
                 </>
               )}
             </button>
@@ -175,32 +206,71 @@ export default function ApprovalsPage() {
                 onChange={(e) => setAutoSubmit(e.target.checked)}
                 className="rounded bg-black/40 border-white/20 text-indigo-600 focus:ring-0 w-4 h-4"
               />
-              <span>Click Final Submit Button in Browser (Uncheck to only pre-fill inputs)</span>
+              <span>Submit Form Automatically in Browser (Uncheck to only pre-fill inputs)</span>
             </label>
           </div>
         </form>
 
         {/* Live Form Fill Results Telemetry */}
         {formFillResult && (
-          <div className="p-4 rounded-2xl bg-[#080a18] border border-indigo-500/30 text-xs space-y-2.5 animate-in fade-in duration-200 relative z-10 shadow-inner">
-            <div className="flex items-center justify-between">
-              <span className="font-black text-emerald-400 flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4" />
-                {formFillResult.status === "success" ? "Form Auto-Filled Successfully!" : "Form Process Result"}
-              </span>
-              <span className="text-[10px] font-mono text-slate-400">
-                {formFillResult.filledCount || 0} Fields Processed
+          <div className="p-5 rounded-2xl bg-[#080a18] border border-indigo-500/30 text-xs space-y-4 animate-in fade-in duration-200 relative z-10 shadow-inner">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2">
+                {formFillResult.status === "success" ? (
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                ) : (
+                  <AlertCircle className="w-5 h-5 text-rose-400" />
+                )}
+                <span className="font-black text-white text-sm">
+                  {formFillResult.status === "success" 
+                    ? `Form Intelligently Filled (${formFillResult.filledCount || 0} Questions Solved)`
+                    : "Form Processing Notice"}
+                </span>
+              </div>
+              <span className="text-[11px] font-mono text-slate-400">
+                {formFillResult.pageTitle}
               </span>
             </div>
 
-            {formFillResult.filledFields && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                {formFillResult.filledFields.map((f: any, i: number) => (
-                  <div key={i} className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.05] font-mono text-[11px]">
-                    <span className="text-indigo-300 block text-[9px] uppercase font-bold truncate">{f.field}</span>
-                    <span className="text-white truncate block">{f.value}</span>
-                  </div>
-                ))}
+            {formFillResult.error && (
+              <div className="p-3.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-medium">
+                {formFillResult.error}
+              </div>
+            )}
+
+            {formFillResult.filledFields && formFillResult.filledFields.length > 0 && (
+              <div className="space-y-3">
+                <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 font-mono block">
+                  Question-by-Question AI Reasoning Breakdown:
+                </span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {formFillResult.filledFields.map((f: any, i: number) => {
+                    const badge = getSourceBadge(f.source);
+                    return (
+                      <div key={i} className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/[0.06] space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-white font-bold text-xs leading-snug line-clamp-2">
+                            {f.field}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase border shrink-0 font-mono ${badge.color}`}>
+                            {badge.label}
+                          </span>
+                        </div>
+
+                        <div className="p-2.5 rounded-xl bg-[#030612] border border-white/[0.04] font-mono text-[11px] text-emerald-300">
+                          <span className="text-[9px] text-slate-400 uppercase font-bold block mb-0.5">Typed Answer</span>
+                          <span className="break-words font-semibold">{f.value}</span>
+                        </div>
+
+                        {f.reasoning && (
+                          <p className="text-[10px] text-slate-400 italic">
+                            💡 {f.reasoning}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>

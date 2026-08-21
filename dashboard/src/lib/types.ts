@@ -101,6 +101,33 @@ export interface ApprovalDecision {
 
 export interface UserProfile {
   id: string;
+  full_name?: string;
+  email?: string;
+  phone?: string;
+  date_of_birth?: string;
+  gender?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  zip_code?: string;
+
+  university?: string;
+  degree?: string;
+  major?: string;
+  graduation_year?: string;
+  gpa_cgpa?: string;
+
+  headline?: string;
+  bio?: string;
+  github_url?: string;
+  linkedin_url?: string;
+  portfolio_url?: string;
+  skills?: string[];
+  projects_summary?: string;
+  work_experience?: string;
+  custom_vault?: Record<string, string>;
+
   vertical_interests: string[];
   attributes: Record<string, any>;
   include_tags: string[];

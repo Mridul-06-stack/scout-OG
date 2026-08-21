@@ -125,11 +125,50 @@ class Opportunity(BaseModel):
     change_type: ChangeType = ChangeType.NEW
 
 
-# ── User Profile ────────────────────────────────────────────────────────
+# ── User Profile & Identity Vault ───────────────────────────────────────
 
 class UserProfile(BaseModel):
-    """User preferences used by the matcher for scoring."""
+    """User preferences used by the matcher for scoring, plus full Identity Vault for intelligent form filling."""
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    
+    # Personal Identity
+    full_name: str = "Shlok Developer"
+    email: str = "shlok.dev@scout.ai"
+    phone: str = "+91 9876543210"
+    date_of_birth: str = "2003-05-15"
+    gender: str = "Male"
+    address: str = "IIT Campus, Roorkee, Uttarakhand, India"
+    city: str = "Roorkee"
+    state: str = "Uttarakhand"
+    country: str = "India"
+    zip_code: str = "247667"
+
+    # Academic Identity
+    university: str = "Indian Institute of Technology (IIT) Roorkee"
+    degree: str = "Bachelor of Technology (B.Tech)"
+    major: str = "Computer Science and Engineering"
+    graduation_year: str = "2026"
+    gpa_cgpa: str = "8.9 / 10.0"
+
+    # Professional & Links
+    headline: str = "Full-Stack AI Agent & Systems Engineer"
+    bio: str = "Computer Science undergraduate passionate about building autonomous agentic workflows and distributed systems."
+    github_url: str = "https://github.com/Shlok1729"
+    linkedin_url: str = "https://linkedin.com/in/shlok1729"
+    portfolio_url: str = "https://shlok.dev"
+    skills: list[str] = Field(default_factory=lambda: ["Python", "TypeScript", "Next.js", "AI Agents", "Playwright", "FastAPI", "React", "Rust"])
+    projects_summary: str = "Built Scout — Self-Learning Autonomous Opportunity Radar; high-performance webcmd browser automation engine; full-stack applications with Next.js and FastAPI."
+    work_experience: str = "Software Engineering Intern at AI Labs (2025) — built headless browser pipelines and LLM evaluation architectures."
+
+    # Custom Key-Value Identity Vault (e.g. Student ID, Passport, Aadhaar, Team Name)
+    custom_vault: dict[str, str] = Field(default_factory=lambda: {
+        "Student ID": "IITR2022CS104",
+        "Preferred Role": "AI Engineer / Full Stack Developer",
+        "Hackathon Team": "Team Scout AI",
+        "Available Dates": "Immediate / Summer 2025"
+    })
+
+    # Legacy & Radar Matching Attributes
     vertical_interests: list[str] = Field(default_factory=list)
     attributes: dict[str, Any] = Field(default_factory=dict)
     include_tags: list[str] = Field(default_factory=list)

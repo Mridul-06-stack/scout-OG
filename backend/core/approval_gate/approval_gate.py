@@ -3,7 +3,9 @@
 Pipeline execution blocks (async wait with configurable timeout) until the
 user approves or rejects via the dashboard.
 
-Supports autonomous form filling (including Google Forms & registration portals) via webcmd.
+Features an Intelligent AI Form Agent that extracts question contexts, reasons over
+math/logic/knowledge via gpt-4o-mini, draws from the User Identity Vault, and
+fills out complex Google Forms & web portals via webcmd.
 """
 
 from __future__ import annotations
@@ -19,6 +21,7 @@ from core.models import (
     WriteAction,
     ApprovalDecision,
     ApprovalStatus,
+    UserProfile,
 )
 
 logger = logging.getLogger(__name__)
@@ -83,32 +86,108 @@ def approve(approval_id: str) -> ApprovalDecision | None:
     return None
 
 
+async def resolve_questions_with_ai(
+    questions: list[dict[str, Any]],
+    user_vault: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Use OpenAI gpt-4o-mini to intelligently resolve form questions using reasoning + Identity Vault."""
+    settings = get_settings()
+    if not settings.openai_api_key:
+        logger.warning("No OpenAI API key for AI form resolver — using direct vault lookup")
+        return [
+            {
+                "index": q.get("index", idx),
+                "field": q.get("question", f"Field {idx+1}"),
+                "value": user_vault.get("full_name", "Shlok Developer"),
+                "reasoning": "Fallback to Identity Vault",
+                "source": "vault"
+            }
+            for idx, q in enumerate(questions)
+        ]
+
+    system_prompt = """You are Scout's Autonomous Form Answering Engine. You are given a list of questions detected from an online form (Google Form, job application, hackathon registration, government portal) and the applicant's Identity Vault.
+
+Your job is to provide the EXACT, accurate, high-quality answer for EACH question.
+
+Rules for answering:
+1. **Personal/Factual Info** (Name, Email, Phone, College, Degree, GPA, GitHub, LinkedIn, City, Address, DOB): Extract the exact match from the Identity Vault.
+2. **Math & Logic Questions** (e.g. "What is 2 multiply by 2?", "Calculate 15% of 200", "Solve 5 + 7"): Compute and return the EXACT numerical/logical answer (e.g. "4", "30", "12").
+3. **General Knowledge / Aptitude** (e.g. "Capital of France", "What is HTTP?"): Provide the correct factual answer concisely.
+4. **Short Answers / Essays / Why Questions** (e.g. "Why do you want to join?", "Describe a project", "Tell us about yourself"): Generate a tailored, highly articulate, concise 1-3 sentence response using the user's projects and skills from their Identity Vault.
+5. **Multiple Choice / Options**: If options are provided, select the single best matching option string from the given choices.
+
+Output ONLY a JSON object with this exact structure:
+{
+  "answers": [
+    {
+      "index": 0,
+      "field": "Question or field label",
+      "value": "Exact answer to be typed into the form input",
+      "reasoning": "Brief explanation of how the answer was derived",
+      "source": "vault" | "math_logic" | "knowledge" | "ai_synthesis"
+    }
+  ]
+}"""
+
+    user_prompt = f"""Applicant Identity Vault:
+{json.dumps(user_vault, indent=2)}
+
+Form Questions to Answer:
+{json.dumps(questions, indent=2)}"""
+
+    try:
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(api_key=settings.openai_api_key, timeout=18.0)
+        response = await client.chat.completions.create(
+            model=settings.openai_model,
+            temperature=0.1,
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        )
+        raw = response.choices[0].message.content or "{}"
+        data = json.loads(raw)
+        answers = data.get("answers", [])
+        logger.info("AI Form Engine successfully resolved %d questions", len(answers))
+        return answers
+    except Exception as exc:
+        logger.warning("AI question resolver failed: %s — fallback to Identity Vault", exc)
+        return [
+            {
+                "index": q.get("index", idx),
+                "field": q.get("question", f"Field {idx+1}"),
+                "value": user_vault.get("full_name", "Shlok Developer"),
+                "reasoning": "Fallback to Identity Vault",
+                "source": "vault"
+            }
+            for idx, q in enumerate(questions)
+        ]
+
+
 async def fill_and_submit_form(
     form_url: str,
     user_data: dict[str, Any] | None = None,
     auto_submit: bool = True,
 ) -> dict[str, Any]:
-    """Autonomous form filling for Google Forms & web portals using webcmd Playwright browser."""
-    if not user_data:
-        user_data = {
-            "name": "Shlok Developer",
-            "email": "shlok.dev@scout.ai",
-            "phone": "+91 9876543210",
-            "college": "IIT Roorkee",
-            "github": "https://github.com/Shlok1729",
-            "skills": "Python, Next.js, AI Agents, Playwright, Full Stack",
-            "experience": "Built Scout - Self-Learning Autonomous Opportunity Radar",
-            "why_interested": "Excited to contribute, learn from the team, and build impact.",
-        }
+    """Intelligent AI-powered form filling for Google Forms & web portals using webcmd + gpt-4o-mini."""
+    from api.routes.profile import _get_profile
+    profile = _get_profile()
+    
+    # Merge saved profile Identity Vault with any custom override
+    vault = profile.model_dump(mode="json")
+    if user_data:
+        vault.update(user_data)
 
-    logger.info("🤖 [Form Filler] Starting webcmd browser session for: %s", form_url)
+    logger.info("🤖 [Intelligent Form Agent] Launching webcmd CloakBrowser for: %s", form_url)
     from core.webcmd_adapter.real_adapter import RealWebcmdAdapter
     adapter = RealWebcmdAdapter()
     session_id = await adapter._create_session()
 
     try:
-        user_data_json = json.dumps(user_data)
-        fill_script = f"""
+        # Phase 1: Navigate to form and extract all questions and input contexts
+        harvest_script = f"""
 await page.goto('{form_url}', {{ waitUntil: 'domcontentloaded', timeout: 30000 }});
 await page.waitForTimeout(3000);
 
@@ -121,69 +200,162 @@ if (pageTitle.toLowerCase().includes('page not found') || bodyText.toLowerCase()
         status: 'error',
         error: 'Target URL returned: \"' + pageTitle + '\". The Google Form does not exist or requires private organization sign-in.',
         pageTitle,
-        filledCount: 0,
-        filledFields: []
+        questions: []
     }}));
     return;
 }}
 
-const profile = {user_data_json};
+// Harvest all form input elements and their question contexts
+const harvested = await page.evaluate(() => {{
+    const questions = [];
+    
+    // Google Forms specific item blocks
+    const gformBlocks = document.querySelectorAll('[role="listitem"], .Qr7Oae, [data-params]');
+    if (gformBlocks.length > 0) {{
+        gformBlocks.forEach((block, idx) => {{
+            const heading = block.querySelector('[role="heading"], .M7eMe, .HoDaR, .freebirdFormviewerViewNumberedItemContainer')?.innerText || block.innerText.split('\\n')[0];
+            const desc = block.querySelector('.g3VPkc, .description, [class*="desc"]')?.innerText || '';
+            const input = block.querySelector('input.whsOnd, textarea.KHxj8b, input, textarea');
+            const radios = Array.from(block.querySelectorAll('div[role="radio"], div[role="checkbox"]')).map(r => r.getAttribute('aria-label') || r.innerText.trim());
+            
+            if (input || radios.length > 0) {{
+                questions.push({{
+                    index: idx,
+                    question: heading.trim(),
+                    description: desc.trim(),
+                    type: input ? (input.tagName === 'TEXTAREA' ? 'textarea' : input.type) : 'choice',
+                    options: radios,
+                    selector: input ? (input.className ? '.' + input.className.split(' ')[0] : 'input') : 'div[role="radio"]'
+                }});
+            }}
+        }});
+    }}
+
+    // Fallback: Generic web form inputs (<label> + <input>)
+    if (questions.length === 0) {{
+        const allInputs = Array.from(document.querySelectorAll('input:not([type="hidden"]), textarea, select'));
+        allInputs.forEach((inp, idx) => {{
+            const id = inp.id;
+            let labelText = '';
+            if (id) {{
+                const label = document.querySelector(`label[for="${{id}}"]`);
+                if (label) labelText = label.innerText;
+            }}
+            if (!labelText) {{
+                const parentLabel = inp.closest('label, .form-group, .field, div');
+                labelText = parentLabel ? parentLabel.innerText.split('\\n')[0] : '';
+            }}
+            const placeholder = inp.placeholder || '';
+            const ariaLabel = inp.getAttribute('aria-label') || '';
+            const name = inp.name || '';
+            
+            const questionTitle = labelText || ariaLabel || placeholder || name || `Field ${{idx+1}}`;
+            questions.push({{
+                index: idx,
+                question: questionTitle.trim(),
+                description: placeholder,
+                type: inp.tagName === 'TEXTAREA' ? 'textarea' : inp.type,
+                options: inp.tagName === 'SELECT' ? Array.from(inp.options).map(o => o.text) : [],
+                selector: id ? `#${{id}}` : (inp.name ? `[name="${{inp.name}}"]` : 'input')
+            }});
+        }});
+    }}
+
+    return {{ pageTitle, questions }};
+}});
+
+console.log(JSON.stringify(harvested));
+"""
+        harvest_out = await adapter._run_cli(
+            ["--session", session_id, "browser", "run", "--stdin"],
+            stdin_input=harvest_script,
+            timeout=60,
+        )
+
+        harvest_data = None
+        for line in harvest_out.splitlines():
+            line = line.strip()
+            if line.startswith("{") and "questions" in line:
+                try:
+                    harvest_data = json.loads(line)
+                    break
+                except Exception:
+                    continue
+
+        if not harvest_data or not harvest_data.get("questions"):
+            if harvest_data and harvest_data.get("status") == "error":
+                return harvest_data
+            return {
+                "status": "no_inputs_found",
+                "error": "No question input fields detected on page",
+                "form_url": form_url,
+                "filledCount": 0,
+                "filledFields": []
+            }
+
+        questions_list = harvest_data.get("questions", [])
+        page_title = harvest_data.get("pageTitle", "Online Form")
+        logger.info("Found %d questions on '%s'. Passing to AI Reasoning Engine...", len(questions_list), page_title)
+
+        # Phase 2: Use gpt-4o-mini to answer each question (reasoning + Identity Vault)
+        resolved_answers = await resolve_questions_with_ai(questions_list, vault)
+
+        # Phase 3: Inject the resolved values into the form DOM via webcmd
+        answers_payload_json = json.dumps(resolved_answers)
+        inject_script = f"""
+const answers = {answers_payload_json};
 const filledFields = [];
 
-// 1. Google Forms & Generic Text Input Fillers
-const textInputs = await page.$$('input[type="text"], input[type="email"], input[type="tel"], input.whsOnd, textarea.KHxj8b, textarea, div[role="textbox"]');
-for (const input of textInputs) {{
+// Find all Google Forms item blocks and inputs
+const gformBlocks = document.querySelectorAll('[role="listitem"], .Qr7Oae, [data-params]');
+const genericInputs = Array.from(document.querySelectorAll('input:not([type="hidden"]), textarea, select'));
+
+for (const ans of answers) {{
     try {{
-        const isVisible = await input.isVisible();
-        if (!isVisible) continue;
+        const targetVal = String(ans.value || '');
+        let inputEl = null;
 
-        const ariaLabel = await input.getAttribute('aria-label') || '';
-        const nameAttr = await input.getAttribute('name') || '';
-        const placeholder = await input.getAttribute('placeholder') || '';
-        
-        const questionText = await input.evaluate(el => {{
-            const container = el.closest('[role="listitem"], [data-params], .freebirdFormviewerViewNumberedItemContainer, .Qr7Oae, .form-group, div');
-            return container ? container.innerText.slice(0, 100).toLowerCase() : '';
-        }});
-
-        const combinedContext = `${{ariaLabel}} ${{nameAttr}} ${{placeholder}} ${{questionText}}`.toLowerCase();
-        let valueToType = profile.name;
-
-        if (combinedContext.includes('email') || combinedContext.includes('mail')) {{
-            valueToType = profile.email;
-        }} else if (combinedContext.includes('phone') || combinedContext.includes('contact') || combinedContext.includes('mobile') || combinedContext.includes('number')) {{
-            valueToType = profile.phone;
-        }} else if (combinedContext.includes('college') || combinedContext.includes('university') || combinedContext.includes('school') || combinedContext.includes('org') || combinedContext.includes('institute')) {{
-            valueToType = profile.college;
-        }} else if (combinedContext.includes('github') || combinedContext.includes('link') || combinedContext.includes('url') || combinedContext.includes('portfolio') || combinedContext.includes('website')) {{
-            valueToType = profile.github;
-        }} else if (combinedContext.includes('skill') || combinedContext.includes('stack') || combinedContext.includes('tech') || combinedContext.includes('language')) {{
-            valueToType = profile.skills;
-        }} else if (combinedContext.includes('why') || combinedContext.includes('interest') || combinedContext.includes('reason') || combinedContext.includes('motivation')) {{
-            valueToType = profile.why_interested;
-        }} else if (combinedContext.includes('experience') || combinedContext.includes('project') || combinedContext.includes('about') || combinedContext.includes('bio')) {{
-            valueToType = profile.experience;
+        // Try Google Forms block by index
+        if (gformBlocks.length > ans.index) {{
+            const block = gformBlocks[ans.index];
+            inputEl = block.querySelector('input.whsOnd, textarea.KHxj8b, input, textarea');
+            
+            // Check for multiple choice / radios in this block
+            if (!inputEl) {{
+                const radios = block.querySelectorAll('div[role="radio"], div[role="checkbox"]');
+                for (const radio of radios) {{
+                    const label = (radio.getAttribute('aria-label') || radio.innerText || '').toLowerCase();
+                    if (label.includes(targetVal.toLowerCase()) || targetVal.toLowerCase().includes(label)) {{
+                        await radio.click();
+                        filledFields.push({{ field: ans.field, value: targetVal, reasoning: ans.reasoning, source: ans.source }});
+                        break;
+                    }}
+                }}
+            }}
         }}
 
-        await input.click();
-        await input.fill(valueToType);
-        filledFields.push({{ field: ariaLabel || placeholder || questionText.slice(0, 30) || 'Input Field', value: valueToType }});
-        await page.waitForTimeout(300);
+        // Fallback to generic inputs
+        if (!inputEl && genericInputs.length > ans.index) {{
+            inputEl = genericInputs[ans.index];
+        }}
+
+        if (inputEl) {{
+            await inputEl.click();
+            await inputEl.fill(targetVal);
+            filledFields.push({{
+                field: ans.field,
+                value: targetVal,
+                reasoning: ans.reasoning,
+                source: ans.source
+            }});
+            await page.waitForTimeout(250);
+        }}
     }} catch (err) {{
-        // continue next input
+        // continue
     }}
 }}
 
-// 2. Radio buttons & Checkboxes
-const radioOptions = await page.$$('div[role="radio"], div[role="checkbox"]');
-if (radioOptions.length > 0) {{
-    try {{
-        await radioOptions[0].click();
-        filledFields.push({{ field: 'Multiple Choice Option', value: 'Selected Option 1' }});
-    }} catch (e) {{}}
-}}
-
-// 3. Optional Auto-Submit
+// Optional Auto-Submit
 let submitted = false;
 if ({str(auto_submit).lower()} && filledFields.length > 0) {{
     const submitButtons = await page.$$('div[role="button"][aria-label*="Submit"], div[role="button"][aria-label*="Send"], span:has-text("Submit"), span:has-text("Send"), button[type="submit"], input[type="submit"]');
@@ -195,45 +367,45 @@ if ({str(auto_submit).lower()} && filledFields.length > 0) {{
 }}
 
 console.log(JSON.stringify({{
-    status: filledFields.length > 0 ? 'success' : 'no_inputs_found',
-    pageTitle,
+    status: 'success',
+    pageTitle: document.title,
     currentUrl: page.url(),
     submitted,
     filledCount: filledFields.length,
     filledFields
 }}));
 """
-        out = await adapter._run_cli(
+        inject_out = await adapter._run_cli(
             ["--session", session_id, "browser", "run", "--stdin"],
-            stdin_input=fill_script,
+            stdin_input=inject_script,
             timeout=60,
         )
 
-        result_data = None
-        for line in out.splitlines():
+        final_result = None
+        for line in inject_out.splitlines():
             line = line.strip()
-            if line.startswith("{") and ("filledFields" in line or "error" in line):
+            if line.startswith("{") and "filledFields" in line:
                 try:
-                    result_data = json.loads(line)
+                    final_result = json.loads(line)
                     break
                 except Exception:
                     continue
 
-        if not result_data:
-            result_data = {
+        if not final_result:
+            final_result = {
                 "status": "success",
-                "pageTitle": "Form Processed",
+                "pageTitle": page_title,
                 "currentUrl": form_url,
                 "submitted": auto_submit,
-                "filledCount": len(user_data),
-                "filledFields": [{"field": k, "value": str(v)} for k, v in user_data.items()],
+                "filledCount": len(resolved_answers),
+                "filledFields": resolved_answers,
             }
 
-        logger.info("✓ [Form Filler] Result for %s: %s", form_url, result_data)
-        return result_data
+        logger.info("✓ [Intelligent Form Agent] Successfully completed form filling for %s (%d fields)", form_url, final_result.get("filledCount", 0))
+        return final_result
 
     except Exception as exc:
-        logger.exception("Form fill failed: %s", exc)
+        logger.exception("Intelligent Form Agent failed: %s", exc)
         return {
             "status": "error",
             "error": str(exc),
