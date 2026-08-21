@@ -30,23 +30,31 @@ async def find_sources(plan: PlanConfig) -> list[SourceCandidate]:
         seeds = json.load(f)
 
     candidates: list[SourceCandidate] = []
-    for entry in seeds:
-        # Filter seeds by category overlap if categories specified
-        entry_cats = entry.get("categories", [])
-        if plan.categories and entry_cats:
-            if not set(entry_cats) & set(plan.categories):
-                continue
-
+    
+    # Helper to create candidate
+    def _make_candidate(entry: dict) -> SourceCandidate:
         url = entry["url"]
-        candidates.append(
-            SourceCandidate(
-                url=url,
-                domain=urlparse(url).netloc,
-                vertical=plan.vertical,
-                category=entry_cats[0] if entry_cats else "",
-                name=entry.get("name", urlparse(url).netloc),
-            )
+        entry_cats = entry.get("categories", [])
+        return SourceCandidate(
+            url=url,
+            domain=urlparse(url).netloc,
+            vertical=plan.vertical,
+            category=entry_cats[0] if entry_cats else "",
+            name=entry.get("name", urlparse(url).netloc),
         )
+
+    # First attempt: category overlap
+    if plan.categories:
+        plan_cats = [c.lower().replace(" ", "_") for c in plan.categories]
+        for entry in seeds:
+            entry_cats = [c.lower().replace(" ", "_") for c in entry.get("categories", [])]
+            if any(pc in ec or ec in pc for pc in plan_cats for ec in entry_cats):
+                candidates.append(_make_candidate(entry))
+
+    # Fallback: if no category match or no categories, include all seed sources
+    if not candidates:
+        for entry in seeds:
+            candidates.append(_make_candidate(entry))
 
     logger.info("Found %d seed sources for vertical=%s", len(candidates), plan.vertical)
     return candidates

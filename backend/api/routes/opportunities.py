@@ -28,13 +28,13 @@ async def list_opportunities(
     """List opportunities with optional filters."""
     from storage.db import load_opportunities
 
-    if all_opportunities:
-        results = [r.model_dump(mode="json") for r in all_opportunities]
-    else:
-        results = load_opportunities(vertical=vertical, limit=limit + offset)
-
+    results = [r.model_dump(mode="json") for r in all_opportunities]
     if vertical:
         results = [r for r in results if r.get("vertical") == vertical]
+
+    # If in-memory is empty for this vertical, load from SQLite
+    if not results:
+        results = load_opportunities(vertical=vertical, limit=limit + offset)
     if status:
         results = [r for r in results if r.get("status") == (status.value if hasattr(status, "value") else status)]
     if change_type:
@@ -63,14 +63,18 @@ async def list_opportunities(
 @router.get("/opportunities/stats")
 async def opportunity_stats():
     """Dashboard summary statistics."""
-    opps = all_opportunities
+    from storage.db import load_opportunities
+
+    opps = [r.model_dump(mode="json") for r in all_opportunities] if all_opportunities else load_opportunities(limit=500)
+    
     total = len(opps)
-    new_today = sum(1 for o in opps if o.change_type == ChangeType.NEW)
-    closing_soon = sum(1 for o in opps if o.change_type == ChangeType.CLOSING_SOON)
-    applied = sum(1 for o in opps if o.status == OpportunityStatus.APPLIED)
+    new_today = sum(1 for o in opps if o.get("change_type") in (ChangeType.NEW, "new"))
+    closing_soon = sum(1 for o in opps if o.get("change_type") in (ChangeType.CLOSING_SOON, "closing_soon"))
+    applied = sum(1 for o in opps if o.get("status") in (OpportunityStatus.APPLIED, "applied"))
     by_vertical: dict[str, int] = {}
     for o in opps:
-        by_vertical[o.vertical] = by_vertical.get(o.vertical, 0) + 1
+        v = o.get("vertical", "other")
+        by_vertical[v] = by_vertical.get(v, 0) + 1
 
     return {
         "total": total,

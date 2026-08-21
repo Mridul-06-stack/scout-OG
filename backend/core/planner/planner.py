@@ -31,19 +31,30 @@ _DEFAULTS: dict[str, PlanConfig] = {
     "hotel_price_monitor": PlanConfig(
         vertical="hotel_price_monitor",
         categories=["hotel", "resort", "hostel"],
-        keywords=["budget", "deal", "discount"],
+        keywords=["budget", "deal", "discount", "manali"],
         search_queries=["cheap hotels Manali", "budget stays Himachal"],
         schema_ref="hotel_schema.json",
+    ),
+    "github_issues_grants": PlanConfig(
+        vertical="github_issues_grants",
+        categories=["good_first_issue", "grant", "bounty", "rfp", "open_source"],
+        keywords=["rust", "python", "react", "grant", "bounty", "good first issue"],
+        search_queries=["good first issues rust github", "developer grants web3"],
+        schema_ref="issue_grant_schema.json",
     ),
 }
 
 
-async def plan(intent: str) -> PlanConfig:
+async def plan(intent: str, vertical: str | None = None) -> PlanConfig:
     """Parse a user intent string into a structured PlanConfig.
 
     Supports OpenAI and Anthropic Claude, falling back to sensible defaults.
     """
     settings = get_settings()
+
+    # If intent is empty, return vertical default directly
+    if not intent.strip() and vertical in _DEFAULTS:
+        return _DEFAULTS[vertical]
 
     # Determine provider
     provider = settings.llm_provider
@@ -52,6 +63,8 @@ async def plan(intent: str) -> PlanConfig:
             provider = "openai"
         elif settings.anthropic_api_key:
             provider = "anthropic"
+
+    prompt_user_content = f"Target vertical: {vertical}\nUser intent: {intent}" if vertical else intent
 
     if provider == "openai" and settings.openai_api_key:
         try:
@@ -63,16 +76,18 @@ async def plan(intent: str) -> PlanConfig:
                 response_format={"type": "json_object"},
                 messages=[
                     {"role": "system", "content": _SYSTEM_PROMPT},
-                    {"role": "user", "content": intent},
+                    {"role": "user", "content": prompt_user_content},
                 ],
             )
             raw = response.choices[0].message.content or "{}"
             data = json.loads(raw)
+            if vertical and data.get("vertical") != vertical:
+                data["vertical"] = vertical
             logger.info("Planner successfully generated plan using OpenAI (%s)", settings.openai_model)
             return PlanConfig(**data)
         except Exception as exc:
             logger.error("OpenAI planner failed: %s — using fallback", exc)
-            return _guess_default(intent)
+            return _guess_default(intent, vertical)
 
     elif provider == "anthropic" and settings.anthropic_api_key:
         try:
@@ -87,26 +102,32 @@ async def plan(intent: str) -> PlanConfig:
                         "cache_control": {"type": "ephemeral"},
                     }
                 ],
-                messages=[{"role": "user", "content": intent}],
+                messages=[{"role": "user", "content": prompt_user_content}],
             )
             raw = response.content[0].text.strip()
             if raw.startswith("```"):
                 raw = raw.split("\n", 1)[1].rsplit("```", 1)[0].strip()
 
             data = json.loads(raw)
+            if vertical and data.get("vertical") != vertical:
+                data["vertical"] = vertical
             logger.info("Planner successfully generated plan using Claude (%s)", settings.llm_model)
             return PlanConfig(**data)
         except Exception as exc:
             logger.error("Anthropic planner failed: %s — using fallback", exc)
-            return _guess_default(intent)
+            return _guess_default(intent, vertical)
 
     logger.warning("No OPENAI_API_KEY or ANTHROPIC_API_KEY set — using default plan for intent: %s", intent)
-    return _guess_default(intent)
+    return _guess_default(intent, vertical)
 
 
-def _guess_default(intent: str) -> PlanConfig:
+def _guess_default(intent: str, vertical: str | None = None) -> PlanConfig:
     """Simple keyword heuristic to pick a default plan."""
+    if vertical and vertical in _DEFAULTS:
+        return _DEFAULTS[vertical]
     lower = intent.lower()
+    if any(kw in lower for kw in ("github", "issue", "bounty", "repo", "rust", "grant")):
+        return _DEFAULTS["github_issues_grants"]
     if any(kw in lower for kw in ("hotel", "stay", "room", "price", "booking", "accommodation")):
         return _DEFAULTS["hotel_price_monitor"]
     return _DEFAULTS["student_opportunities"]

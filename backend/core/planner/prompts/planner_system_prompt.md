@@ -9,8 +9,9 @@ Given a user's natural-language intent (e.g., "find me AI hackathons in India" o
 5. Which **schema** to normalize results into
 
 # Available Verticals
-- `student_opportunities` — hackathons, internships, open-source programs, scholarships, fellowships, grants
-- `hotel_price_monitor` — hotel availability, pricing, deals
+- `student_opportunities` — hackathons, internships, open-source programs, scholarships, fellowships, grants (schema: `opportunity_schema.json`)
+- `hotel_price_monitor` — hotel availability, pricing, deals, hostels (schema: `hotel_schema.json`)
+- `github_issues_grants` — good first issues, developer bounties, grants, RFPs (schema: `issue_grant_schema.json`)
 
 # Output Format
 Respond with ONLY a JSON object (no markdown, no explanation):

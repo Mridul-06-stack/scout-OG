@@ -63,7 +63,7 @@ async def run_vertical(vertical: str, intent: str = "") -> PipelineRunInfo:
         # ── 1. PLAN ──
         if not intent:
             intent = f"Find all {vertical.replace('_', ' ')}"
-        plan_config = await plan(intent)
+        plan_config = await plan(intent, vertical=vertical)
         logger.info("Plan: vertical=%s categories=%s", plan_config.vertical, plan_config.categories)
 
         # ── 2. DISCOVER SOURCES ──
