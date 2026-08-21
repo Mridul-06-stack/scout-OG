@@ -75,12 +75,28 @@ async def normalize(raw_records: list[RawRecord], vertical: str) -> list[Opportu
     Returns:
         List of normalized Opportunity objects.
     """
+    import json
+    from pathlib import Path
+
+    # Default fallback maps
     if vertical == "hotel_price_monitor":
         field_map = _HOTEL_FIELD_MAP
     elif vertical == "github_issues_grants":
         field_map = _GITHUB_FIELD_MAP
     else:
         field_map = _OPPORTUNITY_FIELD_MAP
+
+    # Dynamically check if custom vertical config exists
+    custom_cfg_file = Path(__file__).resolve().parent.parent.parent / "verticals" / vertical / "vertical_config.json"
+    if custom_cfg_file.exists():
+        try:
+            with open(custom_cfg_file) as f:
+                custom_cfg = json.load(f)
+                if "field_mappings" in custom_cfg and custom_cfg["field_mappings"]:
+                    field_map = {**field_map, **custom_cfg["field_mappings"]}
+        except Exception as exc:
+            logger.warning("Could not read dynamic field mappings for %s: %s", vertical, exc)
+
     opportunities: list[Opportunity] = []
 
     for record in raw_records:

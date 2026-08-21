@@ -1,0 +1,17 @@
+{
+  "vertical_interests": [
+    "share_market_stock_radar"
+  ],
+  "include_tags": [
+    "stocks",
+    "earnings"
+  ],
+  "exclude_tags": [
+    "spam",
+    "unverified"
+  ],
+  "attributes": {
+    "preference": "high_growth"
+  },
+  "constraints": {}
+}

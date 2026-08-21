@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routes import opportunities, pipeline, sources, approvals, profile
+from api.routes import opportunities, pipeline, sources, approvals, profile, verticals
 
 logging.basicConfig(
     level=logging.INFO,
@@ -49,6 +49,7 @@ app.include_router(pipeline.router, prefix="/api")
 app.include_router(sources.router, prefix="/api")
 app.include_router(approvals.router, prefix="/api")
 app.include_router(profile.router, prefix="/api")
+app.include_router(verticals.router, prefix="/api")
 
 
 @app.get("/api/health")

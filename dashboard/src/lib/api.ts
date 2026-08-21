@@ -155,3 +155,29 @@ export async function updateProfile(profile: Partial<UserProfile>): Promise<any>
   });
   return res.json();
 }
+
+export async function fetchVerticals(): Promise<{ items: import("./types").VerticalInfo[] }> {
+  const res = await fetch(`${BASE_URL}/api/verticals`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Failed to fetch verticals");
+  return res.json();
+}
+
+export async function createVertical(data: {
+  name: string;
+  description: string;
+  seed_urls?: string[];
+  categories?: string[];
+}): Promise<any> {
+  const res = await fetch(`${BASE_URL}/api/verticals`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || "Failed to create vertical");
+  }
+  return res.json();
+}

@@ -107,3 +107,12 @@ export interface UserProfile {
   exclude_tags: string[];
   constraints: Record<string, any>;
 }
+
+export interface VerticalInfo {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  schema_ref: string;
+  categories: string[];
+}

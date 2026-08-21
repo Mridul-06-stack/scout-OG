@@ -222,5 +222,33 @@
     "last_run_status": "success",
     "consecutive_failures": 0,
     "requires_approval_for": []
+  },
+  "finance.yahoo.com": {
+    "id": "5ad4b02b-a855-41eb-b1d8-549e7b4fbe3c",
+    "source_domain": "finance.yahoo.com",
+    "source_url": "https://finance.yahoo.com/most-active",
+    "vertical": "share_market_stock_radar",
+    "learned_at": "2026-08-21T13:39:40.957239",
+    "strategy": "intercepted_api",
+    "extraction_schema_ref": "opportunity_schema.json",
+    "compiled_command_ref": "webcmd_explore_finance_yahoo_com",
+    "last_run_at": "2026-08-21T13:39:45.483949",
+    "last_run_status": "success",
+    "consecutive_failures": 0,
+    "requires_approval_for": []
+  },
+  "www.moneycontrol.com": {
+    "id": "54ce762b-a800-4184-84b7-4d88b20559dd",
+    "source_domain": "www.moneycontrol.com",
+    "source_url": "https://www.moneycontrol.com",
+    "vertical": "share_market_stock_radar",
+    "learned_at": "2026-08-21T13:39:50.755226",
+    "strategy": "public_dom",
+    "extraction_schema_ref": "opportunity_schema.json",
+    "compiled_command_ref": "webcmd_explore_www_moneycontrol_com",
+    "last_run_at": "2026-08-21T13:39:54.826404",
+    "last_run_status": "success",
+    "consecutive_failures": 0,
+    "requires_approval_for": []
   }
 }

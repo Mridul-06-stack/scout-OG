@@ -17,24 +17,38 @@ import {
   Radio,
   Search,
   Zap,
-  ArrowRight
+  ArrowRight,
+  Plus,
+  SlidersHorizontal
 } from "lucide-react";
-import { Opportunity, OpportunityStatus, PipelineRun, StatsResponse } from "@/lib/types";
-import { fetchOpportunities, fetchPipelineRuns, fetchStats, updateOpportunityStatus } from "@/lib/api";
+import { Opportunity, OpportunityStatus, PipelineRun, StatsResponse, VerticalInfo } from "@/lib/types";
+import { fetchOpportunities, fetchPipelineRuns, fetchStats, fetchVerticals, updateOpportunityStatus } from "@/lib/api";
 import OpportunityCard from "@/components/OpportunityCard";
 import StatsCard from "@/components/StatsCard";
 import PipelineRunButton from "@/components/PipelineRunButton";
 import LearnSourceModal from "@/components/LearnSourceModal";
+import CreateVerticalModal from "@/components/CreateVerticalModal";
 import Link from "next/link";
 
 export default function OverviewPage() {
+  const [verticals, setVerticals] = useState<VerticalInfo[]>([]);
   const [vertical, setVertical] = useState<string>("student_opportunities");
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [recentRuns, setRecentRuns] = useState<PipelineRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [isLearnModalOpen, setIsLearnModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const loadVerticalsList = async () => {
+    try {
+      const data = await fetchVerticals();
+      setVerticals(data.items);
+    } catch (err) {
+      console.error("Failed to load verticals:", err);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -55,6 +69,10 @@ export default function OverviewPage() {
   };
 
   useEffect(() => {
+    loadVerticalsList();
+  }, []);
+
+  useEffect(() => {
     loadData();
   }, [vertical, searchQuery]);
 
@@ -67,9 +85,18 @@ export default function OverviewPage() {
   };
 
   const getVerticalTitle = () => {
+    const matched = verticals.find((v) => v.id === vertical);
+    if (matched) return matched.name;
     if (vertical === "hotel_price_monitor") return "Hotel & Stay Monitor";
     if (vertical === "github_issues_grants") return "GitHub Issues & Grants Radar";
     return "Student Hackathon & Internship Radar";
+  };
+
+  const renderVerticalIcon = (vertId: string) => {
+    if (vertId === "student_opportunities") return <GraduationCap className="w-4 h-4" />;
+    if (vertId === "hotel_price_monitor") return <Hotel className="w-4 h-4" />;
+    if (vertId === "github_issues_grants") return <GitBranch className="w-4 h-4" />;
+    return <TrendingUp className="w-4 h-4" />;
   };
 
   return (
@@ -103,6 +130,15 @@ export default function OverviewPage() {
 
           {/* Action & Vertical Switcher Controls */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+            {/* Create Custom Radar Studio CTA */}
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-pink-600/30 via-purple-600/30 to-indigo-600/30 hover:from-pink-600/50 hover:to-indigo-600/50 text-white border border-pink-500/40 text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-pink-500/10 hover:scale-[1.02]"
+            >
+              <Sparkles className="w-4 h-4 text-pink-300" />
+              <span>+ Custom Radar</span>
+            </button>
+
             {/* Teach Source Button */}
             <button
               onClick={() => setIsLearnModalOpen(true)}
@@ -122,56 +158,81 @@ export default function OverviewPage() {
           </div>
         </div>
 
-        {/* Vertical Switcher Pill Tabs */}
+        {/* Dynamic Vertical Switcher Pill Tabs */}
         <div className="mt-6 pt-5 border-t border-white/[0.08] flex flex-wrap items-center gap-2">
           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-2">
-            Active Vertical:
+            Active Radar:
           </span>
 
           <div className="bg-[#0b0d1a]/80 p-1 rounded-2xl border border-white/[0.08] flex flex-wrap items-center gap-1.5 shadow-inner">
-            <button
-              onClick={() => setVertical("student_opportunities")}
-              className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
-                vertical === "student_opportunities"
-                  ? "bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-500/30 scale-[1.02]"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]"
-              }`}
-            >
-              <GraduationCap className="w-4 h-4" />
-              <span>Student Radar</span>
-              <span className="px-1.5 py-0.2 rounded-md text-[10px] bg-black/30 font-mono">
-                {stats?.by_vertical?.student_opportunities || 0}
-              </span>
-            </button>
+            {verticals.length > 0 ? (
+              verticals.map((v) => {
+                const isActive = vertical === v.id;
+                const count = stats?.by_vertical?.[v.id] || 0;
+                return (
+                  <button
+                    key={v.id}
+                    onClick={() => setVertical(v.id)}
+                    className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+                      isActive
+                        ? "bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-500/30 scale-[1.02]"
+                        : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]"
+                    }`}
+                  >
+                    {renderVerticalIcon(v.id)}
+                    <span>{v.name}</span>
+                    <span className="px-1.5 py-0.2 rounded-md text-[10px] bg-black/30 font-mono">
+                      {count}
+                    </span>
+                  </button>
+                );
+              })
+            ) : (
+              /* Default Fallback Pills */
+              <>
+                <button
+                  onClick={() => setVertical("student_opportunities")}
+                  className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+                    vertical === "student_opportunities"
+                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  <GraduationCap className="w-4 h-4" />
+                  <span>Student Radar</span>
+                </button>
+                <button
+                  onClick={() => setVertical("hotel_price_monitor")}
+                  className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+                    vertical === "hotel_price_monitor"
+                      ? "bg-amber-600 text-white shadow-lg shadow-amber-500/30"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  <Hotel className="w-4 h-4" />
+                  <span>Hotel Monitor</span>
+                </button>
+                <button
+                  onClick={() => setVertical("github_issues_grants")}
+                  className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+                    vertical === "github_issues_grants"
+                      ? "bg-purple-600 text-white shadow-lg shadow-purple-500/30"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  <GitBranch className="w-4 h-4" />
+                  <span>GitHub & Grants</span>
+                </button>
+              </>
+            )}
 
+            {/* Quick Add Custom Vertical Pill */}
             <button
-              onClick={() => setVertical("hotel_price_monitor")}
-              className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
-                vertical === "hotel_price_monitor"
-                  ? "bg-gradient-to-r from-amber-600 to-amber-500 text-white shadow-lg shadow-amber-500/30 scale-[1.02]"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]"
-              }`}
+              onClick={() => setIsCreateModalOpen(true)}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold text-pink-300 hover:text-white hover:bg-pink-500/20 border border-dashed border-pink-500/30 transition-all flex items-center gap-1.5"
             >
-              <Hotel className="w-4 h-4" />
-              <span>Hotel Monitor</span>
-              <span className="px-1.5 py-0.2 rounded-md text-[10px] bg-black/30 font-mono">
-                {stats?.by_vertical?.hotel_price_monitor || 0}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setVertical("github_issues_grants")}
-              className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
-                vertical === "github_issues_grants"
-                  ? "bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-500/30 scale-[1.02]"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]"
-              }`}
-            >
-              <GitBranch className="w-4 h-4" />
-              <span>GitHub & Grants</span>
-              <span className="px-1.5 py-0.2 rounded-md text-[10px] bg-black/30 font-mono">
-                {stats?.by_vertical?.github_issues_grants || 0}
-              </span>
+              <Plus className="w-3.5 h-3.5" />
+              <span>New Workflow</span>
             </button>
           </div>
         </div>
@@ -265,9 +326,9 @@ export default function OverviewPage() {
                 <Compass className="w-8 h-8 text-indigo-400 animate-bounce" />
               </div>
               <div className="space-y-1">
-                <h4 className="text-lg font-extrabold text-white">No Opportunities Discovered Yet</h4>
+                <h4 className="text-lg font-extrabold text-white">No Listings Discovered Yet for this Radar</h4>
                 <p className="text-xs text-slate-400 max-w-sm mx-auto font-medium">
-                  Hit <strong className="text-indigo-300">&ldquo;Run Radar Now&rdquo;</strong> above to execute the real webcmd extraction pipeline on live seed sources.
+                  Hit <strong className="text-indigo-300">&ldquo;Run Radar Now&rdquo;</strong> above to explore target sources and populate your custom feed.
                 </p>
               </div>
             </div>
@@ -306,7 +367,7 @@ export default function OverviewPage() {
               <span>Unified Generalized Engine</span>
             </div>
             <p className="text-xs text-slate-300 leading-relaxed font-medium">
-              All 3 verticals execute on the exact same zero-pipeline-code core:
+              Every workflow executes on the exact same zero-pipeline-code core:
             </p>
             <div className="font-mono text-[10px] text-indigo-200 bg-[#080914] p-3 rounded-2xl border border-white/[0.08] space-y-1 shadow-inner">
               <div className="text-emerald-400">1. Intent → gpt-4o-mini Plan</div>
@@ -382,6 +443,17 @@ export default function OverviewPage() {
           loadData();
         }}
         defaultVertical={vertical}
+      />
+
+      {/* Dynamic Create Vertical Studio Modal */}
+      <CreateVerticalModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={(newSlug) => {
+          setIsCreateModalOpen(false);
+          loadVerticalsList();
+          setVertical(newSlug);
+        }}
       />
     </div>
   );
