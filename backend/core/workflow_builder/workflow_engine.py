@@ -17,6 +17,7 @@ import asyncio
 import base64
 import json
 import logging
+import re
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -163,6 +164,47 @@ try {{
     except Exception as exc:
         logger.warning("Could not build auth cookie script: %s", exc)
     return ""
+
+
+def _parse_target_indices(text: str, total_count: int = 10) -> list[int]:
+    """Parse exact target positional indices from prompt (e.g. '1st and 3rd and 5th' -> [0, 2, 4])."""
+    text_lower = text.lower()
+    indices = []
+
+    ord_map = {
+        "1st": 0, "first": 0,
+        "2nd": 1, "second": 1,
+        "3rd": 2, "third": 2,
+        "4th": 3, "fourth": 3,
+        "5th": 4, "fifth": 4,
+        "6th": 5, "sixth": 5,
+        "7th": 6, "seventh": 6,
+        "8th": 7, "eighth": 7,
+        "9th": 8, "ninth": 8,
+        "10th": 9, "tenth": 9,
+    }
+    for k, v in ord_map.items():
+        if re.search(rf"\b{k}\b", text_lower):
+            indices.append(v)
+
+    if not indices:
+        action_match = re.search(r'(?:star|click|select|open|bookmark)\s+([0-9\s,and]+)', text_lower)
+        if action_match:
+            nums = re.findall(r'\b([1-9]|10)\b', action_match.group(1))
+            for n in nums:
+                idx = int(n) - 1
+                if idx < total_count and idx not in indices:
+                    indices.append(idx)
+
+    if not indices:
+        top_match = re.search(r'(?:top|first)\s*(\d+)', text_lower)
+        if top_match:
+            count = min(int(top_match.group(1)), total_count)
+            indices = list(range(count))
+        else:
+            indices = [0]
+
+    return sorted(list(set(indices)))
 
 
 async def execute_visual_workflow(
@@ -425,43 +467,64 @@ console.log(JSON.stringify({{ status: 'success', captured: '{filename}' }}));
 
                 elif step.type == "click":
                     raw_selector = step.params.get("selector", "button")
-                    intent_text = f"{step.title} {step.description} {raw_selector}".lower()
+                    intent_text = f"{workflow.name} {workflow.description} {step.title} {step.description} {raw_selector}".lower()
                     is_star_action = "star" in intent_text
-                    is_multi_star = is_star_action and ("3" in intent_text or "top" in intent_text or "each" in intent_text or "all" in intent_text)
-                    limit_count = 3 if ("3" in intent_text or "top" in intent_text) else 1
+                    is_unstar_action = "unstar" in intent_text
+                    target_indices = _parse_target_indices(intent_text)
 
                     click_script = f"""
 try {{
     const isStar = {str(is_star_action).lower()};
-    const isMulti = {str(is_multi_star).lower()};
-    const limit = {limit_count};
+    const isUnstar = {str(is_unstar_action).lower()};
+    const targetIndices = {json.dumps(target_indices)};
 
-    if (isStar) {{
+    if (isStar || isUnstar) {{
         const starResult = await page.evaluate((args) => {{
-            const rows = document.querySelectorAll('article.Box-row, .repo-list-item, [data-hydro-click*="STAR"]');
-            const clicked = [];
+            const rows = document.querySelectorAll('article.Box-row, .repo-list-item, .Box-row');
+            const actions = [];
+            const targetIdxs = args.targetIndices || [0];
+
             if (rows.length > 0) {{
-                const maxClicks = args.isMulti ? Math.min(args.limit, rows.length) : 1;
-                for (let i = 0; i < maxClicks; i++) {{
-                    const row = rows[i];
-                    const titleEl = row.querySelector('h2 a, article h2 a, a[href*="/"].text-bold, h2');
-                    const repoTitle = titleEl ? titleEl.innerText.trim() : ('Repo #' + (i + 1));
-                    const starBtn = row.querySelector('button[aria-label*="Star"], button[aria-label*="star"], form[action*="star"] button, button:has(svg.octicon-star), button[data-hydro-click*="STAR"], button[data-hydro-click*="star"], button[value="Star"]');
-                    if (starBtn) {{
-                        starBtn.click();
-                        clicked.push(repoTitle);
+                for (const idx of targetIdxs) {{
+                    if (idx >= rows.length) continue;
+                    const row = rows[idx];
+                    const repoLink = row.querySelector('h2 a, a[href*="/"]:not([href*="star"]):not([href*="sponsor"]):not([href*="login"])');
+                    const repoName = repoLink ? (repoLink.pathname ? repoLink.pathname.slice(1) : (repoLink.getAttribute('href') || '')) : ('Repo #' + (idx + 1));
+                    
+                    const starBtn = row.querySelector('button[aria-label*="Star"], button[aria-label*="star"], form[action*="star"] button, button:has(svg.octicon-star), button[data-hydro-click*="STAR"], button[value="Star"]');
+                    if (!starBtn) continue;
+
+                    const ariaLabel = (starBtn.getAttribute('aria-label') || '').toLowerCase();
+                    const innerText = (starBtn.innerText || '').toLowerCase();
+                    const isAlreadyStarred = ariaLabel.includes('unstar') || ariaLabel.includes('starred') || innerText.includes('starred');
+
+                    if (args.isUnstar) {{
+                        if (isAlreadyStarred) {{
+                            starBtn.click();
+                            actions.push({{ index: idx + 1, repo: repoName, action: 'unstarred' }});
+                        }} else {{
+                            actions.push({{ index: idx + 1, repo: repoName, action: 'already_unstarred (kept)' }});
+                        }}
+                    }} else {{
+                        if (isAlreadyStarred) {{
+                            actions.push({{ index: idx + 1, repo: repoName, action: 'already_starred (kept)' }});
+                        }} else {{
+                            starBtn.click();
+                            actions.push({{ index: idx + 1, repo: repoName, action: 'starred ⭐' }});
+                        }}
                     }}
                 }}
             }}
-            if (clicked.length === 0) {{
+
+            if (actions.length === 0) {{
                 const repoStarBtn = document.querySelector('#star-button, form.unstarred button, [aria-label*="Star this repository"]');
                 if (repoStarBtn) {{
                     repoStarBtn.click();
-                    clicked.push(document.title || 'Current Repository');
+                    actions.push({{ index: 1, repo: document.title || 'Current Repository', action: 'starred ⭐' }});
                 }}
             }}
-            return clicked;
-        }}, {{ isMulti, limit }});
+            return actions;
+        }}, {{ targetIndices, isUnstar }});
 
         if (starResult && starResult.length > 0) {{
             await page.waitForTimeout(2000);
@@ -515,7 +578,8 @@ try {{
 
                     clicked_items = click_data.get("clickedItems", [])
                     if clicked_items:
-                        step_res.output_message = f"Successfully starred {len(clicked_items)} items: {', '.join(clicked_items[:3])}"
+                        action_summaries = [f"{item.get('repo', 'Item')}: {item.get('action', 'done')}" for item in clicked_items]
+                        step_res.output_message = f"Executed actions on {len(clicked_items)} items: {', '.join(action_summaries[:3])}"
                     elif click_data.get("status") == "success":
                         step_res.output_message = f"Clicked target element — Navigated to: {current_url or 'Target Page'}"
                     else:
