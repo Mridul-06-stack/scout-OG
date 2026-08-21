@@ -110,67 +110,82 @@ async def fill_and_submit_form(
         user_data_json = json.dumps(user_data)
         fill_script = f"""
 await page.goto('{form_url}', {{ waitUntil: 'domcontentloaded', timeout: 30000 }});
-await page.waitForTimeout(2000);
+await page.waitForTimeout(3000);
+
+const pageTitle = await page.title();
+const bodyText = await page.evaluate(() => document.body.innerText.slice(0, 500));
+
+// Check for 404 / Permission / Page not found error on Google Drive
+if (pageTitle.toLowerCase().includes('page not found') || bodyText.toLowerCase().includes('does not exist') || bodyText.toLowerCase().includes('sign in to continue')) {{
+    console.log(JSON.stringify({{
+        status: 'error',
+        error: 'Target URL returned: \"' + pageTitle + '\". The Google Form does not exist or requires private organization sign-in.',
+        pageTitle,
+        filledCount: 0,
+        filledFields: []
+    }}));
+    return;
+}}
 
 const profile = {user_data_json};
 const filledFields = [];
 
 // 1. Google Forms & Generic Text Input Fillers
-const textInputs = await page.$$('input[type="text"], input[type="email"], input[type="tel"], input.whsOnd, textarea, div[role="textbox"]');
+const textInputs = await page.$$('input[type="text"], input[type="email"], input[type="tel"], input.whsOnd, textarea.KHxj8b, textarea, div[role="textbox"]');
 for (const input of textInputs) {{
     try {{
-        // Get question label or aria-label
+        const isVisible = await input.isVisible();
+        if (!isVisible) continue;
+
         const ariaLabel = await input.getAttribute('aria-label') || '';
         const nameAttr = await input.getAttribute('name') || '';
         const placeholder = await input.getAttribute('placeholder') || '';
         
-        // Find nearest question title container
         const questionText = await input.evaluate(el => {{
-            const container = el.closest('[role="listitem"], [data-params], .freebirdFormviewerViewNumberedItemContainer, .form-group, div');
+            const container = el.closest('[role="listitem"], [data-params], .freebirdFormviewerViewNumberedItemContainer, .Qr7Oae, .form-group, div');
             return container ? container.innerText.slice(0, 100).toLowerCase() : '';
         }});
 
         const combinedContext = `${{ariaLabel}} ${{nameAttr}} ${{placeholder}} ${{questionText}}`.toLowerCase();
         let valueToType = profile.name;
 
-        if (combinedContext.includes('email')) {{
+        if (combinedContext.includes('email') || combinedContext.includes('mail')) {{
             valueToType = profile.email;
-        }} else if (combinedContext.includes('phone') || combinedContext.includes('contact') || combinedContext.includes('mobile')) {{
+        }} else if (combinedContext.includes('phone') || combinedContext.includes('contact') || combinedContext.includes('mobile') || combinedContext.includes('number')) {{
             valueToType = profile.phone;
-        }} else if (combinedContext.includes('college') || combinedContext.includes('university') || combinedContext.includes('school') || combinedContext.includes('org')) {{
+        }} else if (combinedContext.includes('college') || combinedContext.includes('university') || combinedContext.includes('school') || combinedContext.includes('org') || combinedContext.includes('institute')) {{
             valueToType = profile.college;
-        }} else if (combinedContext.includes('github') || combinedContext.includes('link') || combinedContext.includes('url') || combinedContext.includes('portfolio')) {{
+        }} else if (combinedContext.includes('github') || combinedContext.includes('link') || combinedContext.includes('url') || combinedContext.includes('portfolio') || combinedContext.includes('website')) {{
             valueToType = profile.github;
-        }} else if (combinedContext.includes('skill') || combinedContext.includes('stack') || combinedContext.includes('tech')) {{
+        }} else if (combinedContext.includes('skill') || combinedContext.includes('stack') || combinedContext.includes('tech') || combinedContext.includes('language')) {{
             valueToType = profile.skills;
-        }} else if (combinedContext.includes('why') || combinedContext.includes('interest') || combinedContext.includes('reason')) {{
+        }} else if (combinedContext.includes('why') || combinedContext.includes('interest') || combinedContext.includes('reason') || combinedContext.includes('motivation')) {{
             valueToType = profile.why_interested;
-        }} else if (combinedContext.includes('experience') || combinedContext.includes('project') || combinedContext.includes('about')) {{
+        }} else if (combinedContext.includes('experience') || combinedContext.includes('project') || combinedContext.includes('about') || combinedContext.includes('bio')) {{
             valueToType = profile.experience;
         }}
 
-        // Focus and type realistic human keys
         await input.click();
         await input.fill(valueToType);
-        filledFields.push({{ field: ariaLabel || placeholder || 'Input Field', value: valueToType }});
+        filledFields.push({{ field: ariaLabel || placeholder || questionText.slice(0, 30) || 'Input Field', value: valueToType }});
         await page.waitForTimeout(300);
     }} catch (err) {{
-        // continue next field
+        // continue next input
     }}
 }}
 
-// 2. Radio buttons & Checkboxes (select first option if required)
+// 2. Radio buttons & Checkboxes
 const radioOptions = await page.$$('div[role="radio"], div[role="checkbox"]');
 if (radioOptions.length > 0) {{
     try {{
         await radioOptions[0].click();
-        filledFields.push({{ field: 'Multiple Choice Option', value: 'Selected' }});
+        filledFields.push({{ field: 'Multiple Choice Option', value: 'Selected Option 1' }});
     }} catch (e) {{}}
 }}
 
 // 3. Optional Auto-Submit
 let submitted = false;
-if ({str(auto_submit).lower()}) {{
+if ({str(auto_submit).lower()} && filledFields.length > 0) {{
     const submitButtons = await page.$$('div[role="button"][aria-label*="Submit"], div[role="button"][aria-label*="Send"], span:has-text("Submit"), span:has-text("Send"), button[type="submit"], input[type="submit"]');
     if (submitButtons.length > 0) {{
         await submitButtons[0].click();
@@ -179,13 +194,10 @@ if ({str(auto_submit).lower()}) {{
     }}
 }}
 
-const pageTitle = await page.title();
-const currentUrl = page.url();
-
 console.log(JSON.stringify({{
-    status: 'success',
+    status: filledFields.length > 0 ? 'success' : 'no_inputs_found',
     pageTitle,
-    currentUrl,
+    currentUrl: page.url(),
     submitted,
     filledCount: filledFields.length,
     filledFields
@@ -197,11 +209,10 @@ console.log(JSON.stringify({{
             timeout=60,
         )
 
-        # Parse JSON output from webcmd
         result_data = None
         for line in out.splitlines():
             line = line.strip()
-            if line.startswith("{") and "filledFields" in line:
+            if line.startswith("{") and ("filledFields" in line or "error" in line):
                 try:
                     result_data = json.loads(line)
                     break
@@ -218,7 +229,7 @@ console.log(JSON.stringify({{
                 "filledFields": [{"field": k, "value": str(v)} for k, v in user_data.items()],
             }
 
-        logger.info("✓ [Form Filler] Successfully processed form: %s (Filled %d fields)", form_url, result_data.get("filledCount", 0))
+        logger.info("✓ [Form Filler] Result for %s: %s", form_url, result_data)
         return result_data
 
     except Exception as exc:

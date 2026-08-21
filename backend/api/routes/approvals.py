@@ -2,13 +2,24 @@
 
 from __future__ import annotations
 
+from typing import Any
 from fastapi import APIRouter
+from pydantic import BaseModel, Field
 
 from core.approval_gate.approval_gate import (
     get_pending, get_all, approve, reject,
 )
 
 router = APIRouter(tags=["approvals"])
+
+
+class FormFillRequest(BaseModel):
+    form_url: str = Field(..., description="Target Google Form or registration URL")
+    user_data: dict[str, Any] | None = Field(default=None, description="Custom field values")
+    auto_submit: bool = Field(default=False, description="Whether to click submit button")
+
+
+FormFillRequest.model_rebuild()
 
 
 @router.get("/approvals")
@@ -29,7 +40,6 @@ async def approve_action(approval_id: str):
 
     decision = approve(approval_id)
     if decision:
-        # Trigger real post-approval execution in background
         asyncio.create_task(execute_approved_action(decision))
         return {"message": "Approved and executing action", "decision": decision.model_dump(mode="json")}
     return {"error": "Approval not found or already resolved"}
@@ -50,10 +60,7 @@ async def simulate_write_action(
     description: str = "Submit Application Form for Unstop TechSprint India",
     target_url: str = "https://unstop.com/hackathons/apply",
 ):
-    """Trigger a simulated write action for demo verification.
-    
-    Creates a WriteAction and initiates the request() flow in background.
-    """
+    """Trigger a simulated write action for demo verification."""
     import asyncio
     from core.models import WriteAction, ApprovalAction
     from core.approval_gate.approval_gate import request
@@ -71,15 +78,6 @@ async def simulate_write_action(
     return {"message": "Write action initiated. Gated for human approval."}
 
 
-from pydantic import BaseModel, Field
-
-
-class FormFillRequest(BaseModel):
-    form_url: str = Field(..., description="Target Google Form or registration URL")
-    user_data: dict[str, Any] | None = Field(default=None, description="Custom field values")
-    auto_submit: bool = Field(default=False, description="Whether to click submit button")
-
-
 @router.post("/approvals/fill-form")
 async def fill_form_endpoint(req: FormFillRequest):
     """Directly fill a Google Form or registration portal using webcmd CloakBrowser."""
@@ -90,4 +88,3 @@ async def fill_form_endpoint(req: FormFillRequest):
         auto_submit=req.auto_submit,
     )
     return result
-
