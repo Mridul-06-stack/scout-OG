@@ -6,13 +6,11 @@ import {
   MapPin, 
   Calendar, 
   Tag, 
-  CheckCircle2, 
   ChevronDown, 
   ChevronUp, 
-  Sparkles,
   DollarSign,
   Building,
-  ShieldCheck
+  Sparkles
 } from "lucide-react";
 import { Opportunity, OpportunityStatus } from "../lib/types";
 import MatchScoreRing from "./MatchScoreRing";
@@ -30,13 +28,13 @@ export default function OpportunityCard({
   const [isExpanded, setIsExpanded] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const statusOptions: { label: string; value: OpportunityStatus; color: string }[] = [
-    { label: "Discovered", value: "discovered", color: "text-slate-400" },
-    { label: "Interested", value: "interested", color: "text-indigo-400" },
-    { label: "Applying", value: "applying", color: "text-amber-400" },
-    { label: "Applied", value: "applied", color: "text-cyan-400" },
-    { label: "Selected", value: "selected", color: "text-emerald-400" },
-    { label: "Closed", value: "closed", color: "text-rose-400" },
+  const statusOptions: { label: string; value: OpportunityStatus }[] = [
+    { label: "Discovered", value: "discovered" },
+    { label: "Interested", value: "interested" },
+    { label: "Applying", value: "applying" },
+    { label: "Applied", value: "applied" },
+    { label: "Selected", value: "selected" },
+    { label: "Closed", value: "closed" },
   ];
 
   const handleStatusChange = async (newStatus: OpportunityStatus) => {
@@ -61,13 +59,13 @@ export default function OpportunityCard({
   const raw = opportunity.raw_fields || {};
 
   return (
-    <div className="glass-panel glass-panel-interactive rounded-2xl p-5 border border-white/10 hover:border-indigo-500/30 transition-all duration-300">
+    <div className="glass-panel glass-panel-interactive rounded-2xl p-5 border border-white/5 hover:border-[#00f5d4]/40 transition-all duration-300 relative overflow-hidden group">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           {/* Header Badges */}
           <div className="flex flex-wrap items-center gap-2 mb-2">
             <ChangeTypeBadge type={opportunity.change_type} />
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 uppercase tracking-wider">
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-[#00f5d4]/10 text-[#00f5d4] border border-[#00f5d4]/20 uppercase tracking-wider">
               {opportunity.type || (isHotel ? "hotel" : "opportunity")}
             </span>
             {raw.organization && (
@@ -79,27 +77,27 @@ export default function OpportunityCard({
           </div>
 
           {/* Title */}
-          <h4 className="text-lg font-bold text-white tracking-tight hover:text-indigo-300 transition-colors">
+          <h4 className="text-lg font-bold text-white tracking-tight group-hover:text-[#00f5d4] transition-colors leading-snug">
             {opportunity.title}
           </h4>
 
           {/* Key Attributes Bar */}
-          <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-slate-400">
+          <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-slate-400 font-sans">
             {opportunity.location && (
               <div className="flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-indigo-400/80" />
+                <MapPin className="w-3.5 h-3.5 text-[#00f5d4]" />
                 <span>{opportunity.location}</span>
               </div>
             )}
 
             <div className="flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-indigo-400/80" />
+              <Calendar className="w-3.5 h-3.5 text-cyan-400" />
               <span>{isHotel ? `Check-in: ${raw.check_in || "Available"}` : `Deadline: ${deadlineFormatted}`}</span>
             </div>
 
             {/* Compensation / Price */}
             {(raw.stipend || raw.prize || raw.price_per_night) && (
-              <div className="flex items-center gap-1 text-emerald-400 font-medium">
+              <div className="flex items-center gap-1 text-emerald-400 font-bold font-mono">
                 <DollarSign className="w-3.5 h-3.5" />
                 <span>
                   {isHotel
@@ -114,7 +112,7 @@ export default function OpportunityCard({
         {/* Match Score Indicator */}
         <div className="flex flex-col items-center">
           <MatchScoreRing score={opportunity.match_score} size="md" />
-          <span className="text-[10px] text-slate-500 font-semibold tracking-wider uppercase mt-1">
+          <span className="text-[9px] text-slate-500 font-mono font-bold tracking-widest uppercase mt-1">
             Fit Score
           </span>
         </div>
@@ -126,7 +124,7 @@ export default function OpportunityCard({
           {opportunity.tags.map((tag, idx) => (
             <span
               key={idx}
-              className="px-2 py-0.5 rounded-lg text-[11px] bg-white/[0.04] text-slate-300 border border-white/5 flex items-center gap-1"
+              className="px-2 py-0.5 rounded-lg text-[11px] font-mono bg-white/[0.03] text-slate-300 border border-white/5 flex items-center gap-1"
             >
               <Tag className="w-2.5 h-2.5 text-slate-500" />
               {tag}
@@ -137,7 +135,7 @@ export default function OpportunityCard({
 
       {/* Description Snippet */}
       {raw.description && (
-        <p className="text-xs text-slate-400/90 mt-3 line-clamp-2 leading-relaxed bg-black/20 p-2.5 rounded-xl border border-white/[0.03]">
+        <p className="text-xs text-slate-400 mt-3 line-clamp-2 leading-relaxed bg-black/40 p-2.5 rounded-xl border border-white/5 font-sans">
           {raw.description}
         </p>
       )}
@@ -145,10 +143,10 @@ export default function OpportunityCard({
       {/* Expandable Raw Fields Drawer */}
       {isExpanded && (
         <div className="mt-4 pt-4 border-t border-white/5 space-y-2">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+          <p className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest">
             Raw Extracted Metadata (webcmd Normalizer)
           </p>
-          <pre className="text-[11px] font-mono text-indigo-200/80 bg-black/40 p-3 rounded-xl overflow-x-auto border border-white/5">
+          <pre className="text-[11px] font-mono text-cyan-200/80 bg-black/60 p-3 rounded-xl overflow-x-auto border border-white/5">
             {JSON.stringify(opportunity.raw_fields, null, 2)}
           </pre>
         </div>
@@ -158,12 +156,12 @@ export default function OpportunityCard({
       <div className="mt-4 pt-3 border-t border-white/5 flex flex-wrap items-center justify-between gap-3">
         {/* Status Dropdown */}
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-slate-500">Lifecycle:</span>
+          <span className="text-xs font-mono font-bold text-slate-500">Stage:</span>
           <select
             value={opportunity.status}
             onChange={(e) => handleStatusChange(e.target.value as OpportunityStatus)}
             disabled={isUpdating}
-            className="bg-[#121422] border border-white/10 rounded-xl px-2.5 py-1 text-xs text-slate-200 font-medium focus:outline-none focus:border-indigo-500 transition-colors"
+            className="bg-[#0b0d17] border border-white/10 rounded-xl px-2.5 py-1 text-xs text-slate-200 font-bold focus:outline-none focus:border-[#00f5d4] transition-colors font-mono"
           >
             {statusOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -177,7 +175,7 @@ export default function OpportunityCard({
           {/* Toggle raw details */}
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-white/5 text-xs flex items-center gap-1 transition-colors"
+            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 text-xs flex items-center gap-1 transition-colors font-mono"
           >
             {isExpanded ? (
               <>
@@ -197,7 +195,7 @@ export default function OpportunityCard({
             href={opportunity.source_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 hover:text-indigo-200 border border-indigo-500/30 text-xs font-semibold shadow-sm transition-all"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#00f5d4]/10 hover:bg-[#00f5d4]/20 text-[#00f5d4] border border-[#00f5d4]/30 text-xs font-bold shadow-sm transition-all"
           >
             <span>Visit Source</span>
             <ExternalLink className="w-3 h-3" />
