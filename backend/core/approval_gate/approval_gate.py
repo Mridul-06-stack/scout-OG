@@ -31,6 +31,33 @@ _pending: dict[str, ApprovalDecision] = {}
 DEMO_AUTO_APPROVE_DELAY = 10  # seconds
 
 
+def _extract_json_from_webcmd(out: str) -> dict | None:
+    """Extract nested JSON payload from webcmd execution output."""
+    try:
+        data = json.loads(out)
+        if isinstance(data, dict):
+            if "logs" in data and data["logs"]:
+                for log_entry in data["logs"]:
+                    for arg in log_entry.get("args", []):
+                        if isinstance(arg, str) and "{" in arg and "}" in arg:
+                            try:
+                                return json.loads(arg)
+                            except Exception:
+                                pass
+            return data
+    except Exception:
+        pass
+
+    for line in out.splitlines():
+        line = line.strip()
+        if line.startswith("{") and line.endswith("}"):
+            try:
+                return json.loads(line)
+            except Exception:
+                continue
+    return None
+
+
 async def request(action: WriteAction) -> ApprovalDecision:
     """Create an approval request and block until resolved."""
     settings = get_settings()
@@ -169,13 +196,12 @@ Form Questions to Answer:
 async def fill_and_submit_form(
     form_url: str,
     user_data: dict[str, Any] | None = None,
-    auto_submit: bool = True,
+    auto_submit: bool = False,
 ) -> dict[str, Any]:
     """Intelligent AI-powered form filling for Google Forms & web portals using webcmd + gpt-4o-mini."""
     from api.routes.profile import _get_profile
     profile = _get_profile()
     
-    # Merge saved profile Identity Vault with any custom override
     vault = profile.model_dump(mode="json")
     if user_data:
         vault.update(user_data)
@@ -191,77 +217,54 @@ async def fill_and_submit_form(
 await page.goto('{form_url}', {{ waitUntil: 'domcontentloaded', timeout: 30000 }});
 await page.waitForTimeout(3000);
 
-const pageTitle = await page.title();
-const bodyText = await page.evaluate(() => document.body.innerText.slice(0, 500));
-
-// Check for 404 / Permission / Page not found error on Google Drive
-if (pageTitle.toLowerCase().includes('page not found') || bodyText.toLowerCase().includes('does not exist') || bodyText.toLowerCase().includes('sign in to continue')) {{
-    console.log(JSON.stringify({{
-        status: 'error',
-        error: 'Target URL returned: \"' + pageTitle + '\". The Google Form does not exist or requires private organization sign-in.',
-        pageTitle,
-        questions: []
-    }}));
-    return;
-}}
-
 // Harvest all form input elements and their question contexts
 const harvested = await page.evaluate(() => {{
     const questions = [];
+    const nl = String.fromCharCode(10);
     
-    // Google Forms specific item blocks
-    const gformBlocks = document.querySelectorAll('[role="listitem"], .Qr7Oae, [data-params]');
-    if (gformBlocks.length > 0) {{
-        gformBlocks.forEach((block, idx) => {{
-            const heading = block.querySelector('[role="heading"], .M7eMe, .HoDaR, .freebirdFormviewerViewNumberedItemContainer')?.innerText || block.innerText.split('\\n')[0];
-            const desc = block.querySelector('.g3VPkc, .description, [class*="desc"]')?.innerText || '';
-            const input = block.querySelector('input.whsOnd, textarea.KHxj8b, input, textarea');
-            const radios = Array.from(block.querySelectorAll('div[role="radio"], div[role="checkbox"]')).map(r => r.getAttribute('aria-label') || r.innerText.trim());
+    // 1. Check Google Forms item blocks
+    const listItems = Array.from(document.querySelectorAll('[role="listitem"]'));
+    if (listItems.length > 0) {{
+        listItems.forEach((item, idx) => {{
+            const text = item.innerText || '';
+            const lines = text.split(nl).map(l => l.trim()).filter(l => l && !l.includes('Required question') && l !== '*');
+            const questionTitle = lines[0] || ('Question ' + (idx + 1));
+            const input = item.querySelector('input.whsOnd, textarea.KHxj8b, input, textarea');
+            const radios = Array.from(item.querySelectorAll('div[role="radio"], div[role="checkbox"]')).map(r => r.getAttribute('aria-label') || r.innerText.trim());
             
             if (input || radios.length > 0) {{
                 questions.push({{
                     index: idx,
-                    question: heading.trim(),
-                    description: desc.trim(),
-                    type: input ? (input.tagName === 'TEXTAREA' ? 'textarea' : input.type) : 'choice',
-                    options: radios,
-                    selector: input ? (input.className ? '.' + input.className.split(' ')[0] : 'input') : 'div[role="radio"]'
+                    question: questionTitle,
+                    type: input ? (input.tagName === 'TEXTAREA' ? 'textarea' : 'text') : 'choice',
+                    options: radios
                 }});
             }}
         }});
     }}
 
-    // Fallback: Generic web form inputs (<label> + <input>)
+    // 2. Generic web form fallback
     if (questions.length === 0) {{
-        const allInputs = Array.from(document.querySelectorAll('input:not([type="hidden"]), textarea, select'));
+        const allInputs = Array.from(document.querySelectorAll('input.whsOnd, textarea.KHxj8b, input:not([type="hidden"]), textarea'));
         allInputs.forEach((inp, idx) => {{
-            const id = inp.id;
-            let labelText = '';
-            if (id) {{
-                const label = document.querySelector(`label[for="${{id}}"]`);
-                if (label) labelText = label.innerText;
+            const parentBlock = inp.closest('label, .form-group, .field, fieldset, div');
+            let title = '';
+            if (parentBlock) {{
+                const lines = (parentBlock.innerText || '').split(nl).map(l => l.trim()).filter(l => l && l !== '*');
+                title = lines[0];
             }}
-            if (!labelText) {{
-                const parentLabel = inp.closest('label, .form-group, .field, div');
-                labelText = parentLabel ? parentLabel.innerText.split('\\n')[0] : '';
+            if (!title) {{
+                title = inp.getAttribute('aria-label') || inp.placeholder || inp.name || ('Question ' + (idx + 1));
             }}
-            const placeholder = inp.placeholder || '';
-            const ariaLabel = inp.getAttribute('aria-label') || '';
-            const name = inp.name || '';
-            
-            const questionTitle = labelText || ariaLabel || placeholder || name || `Field ${{idx+1}}`;
             questions.push({{
                 index: idx,
-                question: questionTitle.trim(),
-                description: placeholder,
-                type: inp.tagName === 'TEXTAREA' ? 'textarea' : inp.type,
-                options: inp.tagName === 'SELECT' ? Array.from(inp.options).map(o => o.text) : [],
-                selector: id ? `#${{id}}` : (inp.name ? `[name="${{inp.name}}"]` : 'input')
+                question: title,
+                type: inp.tagName === 'TEXTAREA' ? 'textarea' : 'text'
             }});
         }});
     }}
 
-    return {{ pageTitle, questions }};
+    return {{ pageTitle: document.title, questions }};
 }});
 
 console.log(JSON.stringify(harvested));
@@ -272,19 +275,9 @@ console.log(JSON.stringify(harvested));
             timeout=60,
         )
 
-        harvest_data = None
-        for line in harvest_out.splitlines():
-            line = line.strip()
-            if line.startswith("{") and "questions" in line:
-                try:
-                    harvest_data = json.loads(line)
-                    break
-                except Exception:
-                    continue
+        harvest_data = _extract_json_from_webcmd(harvest_out)
 
         if not harvest_data or not harvest_data.get("questions"):
-            if harvest_data and harvest_data.get("status") == "error":
-                return harvest_data
             return {
                 "status": "no_inputs_found",
                 "error": "No question input fields detected on page",
@@ -305,24 +298,19 @@ console.log(JSON.stringify(harvested));
         inject_script = f"""
 const answers = {answers_payload_json};
 const filledFields = [];
-
-// Find all Google Forms item blocks and inputs
-const gformBlocks = document.querySelectorAll('[role="listitem"], .Qr7Oae, [data-params]');
-const genericInputs = Array.from(document.querySelectorAll('input:not([type="hidden"]), textarea, select'));
+const listItems = Array.from(document.querySelectorAll('[role="listitem"]'));
+const allInputs = Array.from(document.querySelectorAll('input.whsOnd, textarea.KHxj8b, input:not([type="hidden"]), textarea'));
 
 for (const ans of answers) {{
     try {{
         const targetVal = String(ans.value || '');
         let inputEl = null;
 
-        // Try Google Forms block by index
-        if (gformBlocks.length > ans.index) {{
-            const block = gformBlocks[ans.index];
-            inputEl = block.querySelector('input.whsOnd, textarea.KHxj8b, input, textarea');
-            
-            // Check for multiple choice / radios in this block
+        if (listItems.length > ans.index) {{
+            const item = listItems[ans.index];
+            inputEl = item.querySelector('input.whsOnd, textarea.KHxj8b, input, textarea');
             if (!inputEl) {{
-                const radios = block.querySelectorAll('div[role="radio"], div[role="checkbox"]');
+                const radios = item.querySelectorAll('div[role="radio"], div[role="checkbox"]');
                 for (const radio of radios) {{
                     const label = (radio.getAttribute('aria-label') || radio.innerText || '').toLowerCase();
                     if (label.includes(targetVal.toLowerCase()) || targetVal.toLowerCase().includes(label)) {{
@@ -334,21 +322,23 @@ for (const ans of answers) {{
             }}
         }}
 
-        // Fallback to generic inputs
-        if (!inputEl && genericInputs.length > ans.index) {{
-            inputEl = genericInputs[ans.index];
+        if (!inputEl && allInputs.length > ans.index) {{
+            inputEl = allInputs[ans.index];
         }}
 
         if (inputEl) {{
-            await inputEl.click();
-            await inputEl.fill(targetVal);
+            inputEl.focus();
+            inputEl.value = targetVal;
+            inputEl.dispatchEvent(new Event('input', {{ bubbles: true }}));
+            inputEl.dispatchEvent(new Event('change', {{ bubbles: true }}));
+            inputEl.dispatchEvent(new Event('blur', {{ bubbles: true }}));
             filledFields.push({{
                 field: ans.field,
                 value: targetVal,
                 reasoning: ans.reasoning,
                 source: ans.source
             }});
-            await page.waitForTimeout(250);
+            await page.waitForTimeout(300);
         }}
     }} catch (err) {{
         // continue
@@ -358,11 +348,14 @@ for (const ans of answers) {{
 // Optional Auto-Submit
 let submitted = false;
 if ({str(auto_submit).lower()} && filledFields.length > 0) {{
-    const submitButtons = await page.$$('div[role="button"][aria-label*="Submit"], div[role="button"][aria-label*="Send"], span:has-text("Submit"), span:has-text("Send"), button[type="submit"], input[type="submit"]');
-    if (submitButtons.length > 0) {{
-        await submitButtons[0].click();
-        await page.waitForTimeout(3000);
-        submitted = true;
+    const submitButtons = document.querySelectorAll('div[role="button"][aria-label*="Submit"], div[role="button"][aria-label*="Send"], span, button[type="submit"], input[type="submit"]');
+    for (const btn of submitButtons) {{
+        if (btn.innerText && btn.innerText.trim().toLowerCase() === 'submit') {{
+            btn.click();
+            await page.waitForTimeout(3000);
+            submitted = true;
+            break;
+        }}
     }}
 }}
 
@@ -381,17 +374,9 @@ console.log(JSON.stringify({{
             timeout=60,
         )
 
-        final_result = None
-        for line in inject_out.splitlines():
-            line = line.strip()
-            if line.startswith("{") and "filledFields" in line:
-                try:
-                    final_result = json.loads(line)
-                    break
-                except Exception:
-                    continue
+        final_result = _extract_json_from_webcmd(inject_out)
 
-        if not final_result:
+        if not final_result or "filledFields" not in final_result:
             final_result = {
                 "status": "success",
                 "pageTitle": page_title,
