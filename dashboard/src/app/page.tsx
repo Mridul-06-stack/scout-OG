@@ -1,186 +1,301 @@
 "use client";
 
-import Link from "next/link";
+import { useEffect, useState } from "react";
 import { 
+  Compass, 
   Sparkles, 
-  ArrowRight, 
-  Terminal, 
-  ShieldCheck, 
-  Radar, 
-  BrainCircuit, 
-  Globe2, 
-  Layers, 
-  GraduationCap, 
-  Hotel, 
-  GitPullRequest,
-  CheckCircle2,
-  ExternalLink,
-  ChevronDown
+  Clock, 
+  CheckCircle2, 
+  RefreshCw, 
+  TrendingUp,
+  Globe2,
+  Activity,
+  Layers,
+  GraduationCap,
+  Hotel
 } from "lucide-react";
-import StorylineScrubber from "@/components/StorylineScrubber";
+import StatsCard from "@/components/StatsCard";
+import OpportunityCard from "@/components/OpportunityCard";
+import PipelineRunButton from "@/components/PipelineRunButton";
+import LearnSourceModal from "@/components/LearnSourceModal";
+import { 
+  fetchStats, 
+  fetchOpportunities, 
+  fetchPipelineRuns, 
+  updateOpportunityStatus 
+} from "@/lib/api";
+import { Opportunity, StatsResponse, PipelineRun, OpportunityStatus } from "@/lib/types";
 
-export default function HomePage() {
-  const scrollToStoryline = () => {
-    const el = document.getElementById("storyline-section");
-    if (el) el.scrollIntoView({ behavior: "smooth" });
+export default function DashboardPage() {
+  const [vertical, setVertical] = useState<string>("student_opportunities");
+  const [stats, setStats] = useState<StatsResponse | null>(null);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [recentRuns, setRecentRuns] = useState<PipelineRun[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isLearnModalOpen, setIsLearnModalOpen] = useState(false);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [statsData, oppsData, runsData] = await Promise.all([
+        fetchStats(),
+        fetchOpportunities({ vertical, limit: 6 }),
+        fetchPipelineRuns(5),
+      ]);
+      setStats(statsData);
+      setOpportunities(oppsData.items);
+      setRecentRuns(runsData.items);
+    } catch (err) {
+      console.error("Failed to load dashboard data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [vertical]);
+
+  const handleStatusChange = async (id: string, newStatus: OpportunityStatus) => {
+    await updateOpportunityStatus(id, newStatus);
+    setOpportunities((prev) =>
+      prev.map((o) => (o.id === id ? { ...o, status: newStatus } : o))
+    );
+    // Refresh stats in background
+    fetchStats().then(setStats);
   };
 
   return (
-    <div className="flex flex-col w-full min-h-screen text-slate-100 selection:bg-[#00f5d4] selection:text-black">
-      
-      {/* ── 1. Hero Section ── */}
-      <section className="relative min-h-[90vh] flex flex-col justify-center items-center text-center px-6 py-20 overflow-hidden">
-        {/* Glow ambient background rings */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-tr from-[#00f5d4]/10 via-[#9d4edd]/15 to-transparent rounded-full blur-3xl pointer-events-none -z-10" />
-
-        <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in zoom-in-95 duration-500">
-          {/* Top Pill */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-mono font-bold bg-[#00f5d4]/10 text-[#00f5d4] border border-[#00f5d4]/30 shadow-lg shadow-[#00f5d4]/10">
-            <Sparkles className="w-3.5 h-3.5 animate-spin" />
-            <span>AGENTIC RADAR ENGINE POWERED BY @AGENTRHQ/WEBCMD</span>
+    <div className="p-8 space-y-8 max-w-7xl mx-auto w-full">
+      {/* Top Welcome Bar & Vertical Selector */}
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-white/5">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+              Autonomous Radar
+            </span>
+            <span className="text-xs text-slate-400">
+              webcmd Explore-Once Pipeline
+            </span>
           </div>
+          <h2 className="text-2xl font-black tracking-tight text-white sm:text-3xl">
+            Opportunity & Workflow Radar
+          </h2>
+        </div>
 
-          {/* Main Hero Headline */}
-          <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tight text-white leading-[1.08]">
-            Turn Recurring Web Browsing into <span className="bg-gradient-to-r from-[#00f5d4] via-[#00bbf9] to-[#9d4edd] bg-clip-text text-transparent">Self-Learning Radar.</span>
-          </h1>
-
-          {/* Subtitle */}
-          <p className="text-base sm:text-lg text-slate-300 max-w-2xl mx-auto font-sans leading-relaxed">
-            Declare high-level intent in plain English. Scout explores live web applications, learns navigational workflows once, continuously scores new opportunities with OpenAI, and holds write actions at a secure human approval gate.
-          </p>
-
-          {/* Hero CTAs */}
-          <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
-            <Link
-              href="/radar"
-              className="px-8 py-4 rounded-2xl bg-gradient-to-r from-[#00f5d4] via-[#00bbf9] to-[#00f5d4] bg-[length:200%_auto] hover:bg-right text-black font-black text-sm shadow-xl shadow-[#00f5d4]/25 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
-            >
-              <span>Launch Live Radar</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-
+        {/* Action Controls */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Vertical Toggle Pills */}
+          <div className="bg-[#121422] p-1 rounded-2xl border border-white/10 flex flex-wrap items-center gap-1 shadow-inner">
             <button
-              onClick={scrollToStoryline}
-              className="px-6 py-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 border border-white/10 font-bold text-sm backdrop-blur-md transition-all flex items-center gap-2 hover:border-white/20"
+              onClick={() => setVertical("student_opportunities")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                vertical === "student_opportunities"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
             >
-              <span>Experience Storyline</span>
-              <ChevronDown className="w-4 h-4 text-[#00f5d4]" />
+              <GraduationCap className="w-3.5 h-3.5" />
+              <span>Student Radar</span>
+            </button>
+            <button
+              onClick={() => setVertical("hotel_price_monitor")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                vertical === "hotel_price_monitor"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <Hotel className="w-3.5 h-3.5" />
+              <span>Hotel Monitor</span>
+            </button>
+            <button
+              onClick={() => setVertical("github_issues_grants")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                vertical === "github_issues_grants"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>GitHub & Grants</span>
             </button>
           </div>
 
-          {/* Telemetry Stats Bar */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-3xl mx-auto pt-8 border-t border-white/5">
-            <div className="glass-panel p-4 rounded-2xl border border-white/5 space-y-1">
-              <div className="text-xl sm:text-2xl font-black text-white font-mono">236+</div>
-              <div className="text-[11px] uppercase font-mono text-slate-400">Live Monitored</div>
-            </div>
-            <div className="glass-panel p-4 rounded-2xl border border-white/5 space-y-1">
-              <div className="text-xl sm:text-2xl font-black text-[#00f5d4] font-mono">3 Verticals</div>
-              <div className="text-[11px] uppercase font-mono text-slate-400">Zero Extra Code</div>
-            </div>
-            <div className="glass-panel p-4 rounded-2xl border border-white/5 space-y-1">
-              <div className="text-xl sm:text-2xl font-black text-[#00bbf9] font-mono">gpt-4o-mini</div>
-              <div className="text-[11px] uppercase font-mono text-slate-400">Semantic Matching</div>
-            </div>
-            <div className="glass-panel p-4 rounded-2xl border border-white/5 space-y-1">
-              <div className="text-xl sm:text-2xl font-black text-emerald-400 font-mono">100% Safe</div>
-              <div className="text-[11px] uppercase font-mono text-slate-400">Human Approval Gate</div>
-            </div>
-          </div>
+          {/* Learn New Source CTA */}
+          <button
+            onClick={() => setIsLearnModalOpen(true)}
+            className="px-3.5 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] text-slate-200 border border-white/10 text-xs font-bold transition-all flex items-center gap-1.5"
+          >
+            <Globe2 className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Teach Source</span>
+          </button>
+
+          {/* Trigger Pipeline Run Button */}
+          <PipelineRunButton
+            currentVertical={vertical}
+            onRunStarted={() => {
+              setTimeout(loadData, 1500);
+            }}
+          />
         </div>
-      </section>
+      </div>
 
-      {/* ── 2. Interactive Scroll-Driven Storyline Engine ── */}
-      <section id="storyline-section" className="relative w-full border-t border-white/5">
-        <StorylineScrubber />
-      </section>
+      {/* Stats Summary Bar */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatsCard
+          title="Active Opportunities"
+          value={stats?.total || 0}
+          subtitle="Monitored across learned sources"
+          icon={Compass}
+          gradient="bg-indigo-500"
+          iconColor="text-indigo-400"
+        />
+        <StatsCard
+          title="Discovered Today"
+          value={stats?.new_today || 0}
+          subtitle="New items from latest scan"
+          icon={Sparkles}
+          gradient="bg-emerald-500"
+          iconColor="text-emerald-400"
+        />
+        <StatsCard
+          title="Closing Soon"
+          value={stats?.closing_soon || 0}
+          subtitle="Deadlines within 7 days"
+          icon={Clock}
+          gradient="bg-rose-500"
+          iconColor="text-rose-400"
+        />
+        <StatsCard
+          title="Applications Tracked"
+          value={stats?.applied || 0}
+          subtitle="Across all lifecycle stages"
+          icon={CheckCircle2}
+          gradient="bg-purple-500"
+          iconColor="text-purple-400"
+        />
+      </div>
 
-      {/* ── 3. Multi-Vertical Showcase ── */}
-      <section className="py-24 px-6 max-w-7xl mx-auto w-full space-y-12">
-        <div className="text-center space-y-4 max-w-2xl mx-auto">
-          <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-purple-500/10 text-purple-300 border border-purple-500/20">
-            PROVEN EXTENSIBILITY
-          </span>
-          <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
-            One Generalized Engine. Infinite Verticals.
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-            Scout has zero hardcoded pipeline code. Any vertical is defined purely through JSON config schemas, seed sources, and profile templates.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Vertical 1 */}
-          <div className="glass-panel p-6 rounded-3xl border border-white/5 hover:border-[#00f5d4]/40 transition-all space-y-4 relative overflow-hidden group">
-            <div className="w-12 h-12 rounded-2xl bg-[#00f5d4]/10 border border-[#00f5d4]/30 flex items-center justify-center text-[#00f5d4]">
-              <GraduationCap className="w-6 h-6" />
+      {/* Main Two-Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left 2 Cols: Top Ranked Opportunities Feed */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-indigo-400" />
+              <h3 className="text-base font-bold text-white tracking-tight">
+                Top Matched Opportunities ({vertical === "student_opportunities" ? "Student" : "Hotels"})
+              </h3>
             </div>
-            <h3 className="text-lg font-bold text-white">Student Opportunities</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Monitors Devfolio hackathons, MLH seasons, Unstop competitions, Outreachy fellowships, MITACS, and Smart India Hackathon.
-            </p>
-            <div className="flex flex-wrap gap-1.5 pt-2">
-              <span className="px-2 py-0.5 rounded-lg bg-black/40 border border-white/5 text-[10px] font-mono text-slate-300">Hackathons</span>
-              <span className="px-2 py-0.5 rounded-lg bg-black/40 border border-white/5 text-[10px] font-mono text-slate-300">GSoC</span>
-              <span className="px-2 py-0.5 rounded-lg bg-black/40 border border-white/5 text-[10px] font-mono text-slate-300">Internships</span>
-            </div>
-          </div>
-
-          {/* Vertical 2 */}
-          <div className="glass-panel p-6 rounded-3xl border border-white/5 hover:border-[#00bbf9]/40 transition-all space-y-4 relative overflow-hidden group">
-            <div className="w-12 h-12 rounded-2xl bg-[#00bbf9]/10 border border-[#00bbf9]/30 flex items-center justify-center text-[#00bbf9]">
-              <Hotel className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-bold text-white">Hotel Price Monitor</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Tracks real-time rates and room availability across Zostel properties, Booking.com, and MakeMyTrip with price drop alerts.
-            </p>
-            <div className="flex flex-wrap gap-1.5 pt-2">
-              <span className="px-2 py-0.5 rounded-lg bg-black/40 border border-white/5 text-[10px] font-mono text-slate-300">Live Rates</span>
-              <span className="px-2 py-0.5 rounded-lg bg-black/40 border border-white/5 text-[10px] font-mono text-slate-300">Price Drops</span>
-              <span className="px-2 py-0.5 rounded-lg bg-black/40 border border-white/5 text-[10px] font-mono text-slate-300">Hostels</span>
-            </div>
-          </div>
-
-          {/* Vertical 3 */}
-          <div className="glass-panel p-6 rounded-3xl border border-white/5 hover:border-purple-500/40 transition-all space-y-4 relative overflow-hidden group">
-            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-300">
-              <GitPullRequest className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-bold text-white">GitHub Issues & Grants</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Scours Rust compiler repositories for good first issues, Web3 developer grants on Gitcoin, and developer bounties.
-            </p>
-            <div className="flex flex-wrap gap-1.5 pt-2">
-              <span className="px-2 py-0.5 rounded-lg bg-black/40 border border-white/5 text-[10px] font-mono text-slate-300">Good First Issue</span>
-              <span className="px-2 py-0.5 rounded-lg bg-black/40 border border-white/5 text-[10px] font-mono text-slate-300">Gitcoin Grants</span>
-              <span className="px-2 py-0.5 rounded-lg bg-black/40 border border-white/5 text-[10px] font-mono text-slate-300">Bounties</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── 4. Bottom Launch CTA ── */}
-      <section className="py-20 px-6 border-t border-white/5 bg-gradient-to-b from-transparent to-[#080a14] text-center">
-        <div className="max-w-3xl mx-auto space-y-6">
-          <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
-            Ready to Experience the Autonomous Radar?
-          </h2>
-          <p className="text-sm text-slate-400 max-w-xl mx-auto">
-            Scan live hackathons, monitor hotel prices, score matching opportunities, and test the human approval gate in real time.
-          </p>
-          <div className="pt-2">
-            <Link
-              href="/radar"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-gradient-to-r from-[#00f5d4] via-[#00bbf9] to-[#00f5d4] text-black font-black text-sm shadow-xl shadow-[#00f5d4]/20 hover:scale-105 transition-all"
+            <button
+              onClick={loadData}
+              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+              title="Refresh Feed"
             >
-              <span>Launch Scout Live Control Center</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
+              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            </button>
+          </div>
+
+          {opportunities.length === 0 ? (
+            <div className="glass-panel rounded-3xl p-12 text-center border border-white/5 space-y-3">
+              <Compass className="w-12 h-12 text-slate-600 mx-auto animate-bounce" />
+              <h4 className="text-base font-bold text-white">No Opportunities Discovered Yet</h4>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                Hit &ldquo;Run Radar Now&rdquo; above to let the webcmd pipeline explore seed sources and populate your radar.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {opportunities.map((opp) => (
+                <OpportunityCard
+                  key={opp.id}
+                  opportunity={opp}
+                  onStatusChange={handleStatusChange}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Right 1 Col: Pipeline Status & Recent Runs Timeline */}
+        <div className="space-y-6">
+          {/* Engine Architecture Callout */}
+          <div className="glass-panel rounded-3xl p-5 border border-indigo-500/20 bg-gradient-to-br from-indigo-950/20 to-transparent space-y-3">
+            <div className="flex items-center gap-2 text-indigo-300 font-bold text-xs">
+              <Layers className="w-4 h-4" />
+              <span>Generalized Engine Core</span>
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Both verticals run on the <strong>exact same engine</strong>:
+              <span className="block font-mono text-[10px] text-indigo-200 mt-1 bg-black/40 p-2 rounded-xl border border-white/5">
+                Intent → Plan → webcmd Explore → Normalize → Match → Diff → Gate
+              </span>
+            </p>
+          </div>
+
+          {/* Recent Radar Runs */}
+          <div className="glass-panel rounded-3xl p-5 border border-white/5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <Activity className="w-3.5 h-3.5 text-indigo-400" />
+                Pipeline Execution History
+              </h4>
+              <span className="text-[10px] text-slate-500 font-mono">Real-time</span>
+            </div>
+
+            {recentRuns.length === 0 ? (
+              <p className="text-xs text-slate-500 py-4 text-center">No runs executed yet</p>
+            ) : (
+              <div className="space-y-3">
+                {recentRuns.map((run) => (
+                  <div
+                    key={run.id}
+                    className="p-3 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1.5"
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-white capitalize">
+                        {run.vertical.replace("_", " ")}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        run.status === "success"
+                          ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                          : run.status === "running"
+                          ? "bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 animate-pulse"
+                          : "bg-rose-500/15 text-rose-300 border border-rose-500/30"
+                      }`}>
+                        {run.status}
+                      </span>
+                    </div>
+
+                    {run.intent && (
+                      <p className="text-[11px] text-slate-400 italic truncate">
+                        &ldquo;{run.intent}&rdquo;
+                      </p>
+                    )}
+
+                    <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono pt-1">
+                      <span>{run.records_found} items ({run.new_records} new)</span>
+                      <span>{new Date(run.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-      </section>
+      </div>
+
+      {/* Learn Source Modal */}
+      <LearnSourceModal
+        isOpen={isLearnModalOpen}
+        onClose={() => setIsLearnModalOpen(false)}
+        onSuccess={() => {
+          setIsLearnModalOpen(false);
+          loadData();
+        }}
+        defaultVertical={vertical}
+      />
     </div>
   );
 }

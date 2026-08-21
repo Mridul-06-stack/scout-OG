@@ -120,7 +120,7 @@
     "strategy": "public_dom",
     "extraction_schema_ref": "hotel_schema.json",
     "compiled_command_ref": "mock_cmd_www.makemytrip.com",
-    "last_run_at": "2026-08-21T13:03:21.533844",
+    "last_run_at": "2026-08-21T13:07:04.190893",
     "last_run_status": "success",
     "consecutive_failures": 0,
     "requires_approval_for": []
@@ -134,7 +134,7 @@
     "strategy": "public_dom",
     "extraction_schema_ref": "hotel_schema.json",
     "compiled_command_ref": "mock_cmd_www.booking.com",
-    "last_run_at": "2026-08-21T13:03:26.624801",
+    "last_run_at": "2026-08-21T13:07:08.638181",
     "last_run_status": "success",
     "consecutive_failures": 0,
     "requires_approval_for": []
@@ -162,7 +162,7 @@
     "strategy": "public_dom",
     "extraction_schema_ref": "hotel_schema.json",
     "compiled_command_ref": "mock_cmd_www.goibibo.com",
-    "last_run_at": "2026-08-21T13:03:34.419922",
+    "last_run_at": "2026-08-21T13:07:13.491230",
     "last_run_status": "success",
     "consecutive_failures": 0,
     "requires_approval_for": []

@@ -1,15 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  --background: #05060b;
-  --foreground: #f8fafc;
-  --card-bg: rgba(11, 13, 23, 0.7);
-  --card-border: rgba(255, 255, 255, 0.07);
-  --card-border-hover: rgba(0, 245, 212, 0.4);
-  --accent-cyan: #00f5d4;
-  --accent-blue: #00bbf9;
-  --accent-purple: #9d4edd;
-  --accent-pink: #f72585;
+  --background: #090a10;
+  --foreground: #f1f5f9;
+  --card-bg: rgba(18, 20, 32, 0.7);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --card-border-hover: rgba(99, 102, 241, 0.35);
+  --accent-primary: #6366f1;
+  --accent-secondary: #a855f7;
+  --accent-glow: rgba(99, 102, 241, 0.15);
 }
 
 body {
@@ -30,108 +29,55 @@ body {
   pointer-events: none;
   z-index: 0;
   background: 
-    radial-gradient(circle at 10% 15%, rgba(0, 245, 212, 0.05) 0%, transparent 45%),
-    radial-gradient(circle at 85% 20%, rgba(157, 78, 221, 0.08) 0%, transparent 50%),
-    radial-gradient(circle at 50% 80%, rgba(0, 187, 249, 0.05) 0%, transparent 60%);
+    radial-gradient(circle at 15% 10%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 85% 85%, rgba(168, 85, 247, 0.06) 0%, transparent 40%),
+    radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.03) 0%, transparent 50%);
 }
 
-/* Modern Glassmorphism Panels */
+/* Glassmorphism Cards */
 .glass-panel {
-  background: rgba(11, 13, 23, 0.75);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(15, 17, 26, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 12px 36px 0 rgba(0, 0, 0, 0.45);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .glass-panel-interactive:hover {
-  border-color: rgba(0, 245, 212, 0.35);
-  box-shadow: 0 16px 48px 0 rgba(0, 245, 212, 0.12);
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 12px 40px 0 rgba(99, 102, 241, 0.12);
   transform: translateY(-2px);
 }
 
-.glass-card-glow {
-  position: relative;
-  overflow: hidden;
-}
-
-.glass-card-glow::before {
-  content: "";
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(0, 245, 212, 0.06) 0%, transparent 60%);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.glass-card-glow:hover::before {
-  opacity: 1;
-}
-
-/* Custom Sleek Scrollbar */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(5, 6, 11, 0.7);
+  background: rgba(10, 11, 18, 0.5);
 }
 ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.15);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 245, 212, 0.4);
+  background: rgba(255, 255, 255, 0.3);
 }
 
-/* Animation Keyframes */
-@keyframes pulse-cyan {
+/* Pulse animation for closing soon */
+@keyframes pulse-glow {
   0%, 100% {
-    box-shadow: 0 0 15px rgba(0, 245, 212, 0.4);
+    opacity: 1;
+    filter: drop-shadow(0 0 8px rgba(244, 63, 94, 0.6));
   }
   50% {
-    box-shadow: 0 0 5px rgba(0, 245, 212, 0.15);
+    opacity: 0.75;
+    filter: drop-shadow(0 0 2px rgba(244, 63, 94, 0.2));
   }
 }
 
-.glow-cyan {
-  animation: pulse-cyan 3s infinite ease-in-out;
-}
-
-@keyframes float-slow {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-6px);
-  }
-}
-
-.animate-float {
-  animation: float-slow 4s ease-in-out infinite;
-}
-
-@keyframes scanline {
-  0% {
-    transform: translateY(-100%);
-  }
-  100% {
-    transform: translateY(1000%);
-  }
-}
-
-.scanline-effect {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(0, 245, 212, 0.8), transparent);
-  animation: scanline 3s linear infinite;
-  pointer-events: none;
+.pulse-urgent {
+  animation: pulse-glow 2s infinite ease-in-out;
 }
