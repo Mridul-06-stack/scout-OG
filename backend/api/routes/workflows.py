@@ -32,9 +32,22 @@ def resolve_authoritative_url(prompt: str) -> str:
     """Infer the best live, real-world authoritative URL based on user intent."""
     p = prompt.lower().strip()
 
+    # 1. Direct explicit URL in prompt (e.g. https://github.com/astral-sh/uv, https://dev.to/...)
+    url_match = re.search(r'https?://[^\s]+', prompt)
+    if url_match:
+        return url_match.group(0).rstrip(').,;\'"')
+
+    # 2. github.com/owner/repo or owner/repo mention
+    gh_match = re.search(r'(?:github\.com/)?([a-zA-Z0-9_-]+/[a-zA-Z0-9_.-]+)', prompt)
+    if gh_match:
+        candidate = gh_match.group(1).rstrip(').,;\'"')
+        if not any(k in candidate.lower() for k in ("trending", "topics", "search", "explore", "about")):
+            parts = candidate.split("/")
+            if len(parts) == 2 and all(len(x) > 1 for x in parts):
+                return f"https://github.com/{candidate}"
+
     # Spotify / Music / Audio Players
     if "spotify" in p or (any(k in p for k in ("play", "song", "music", "track", "listen")) and not any(k in p for k in ("youtube", "video", "market", "stock"))):
-        # Extract song or artist query by stripping intent stopwords
         clean_track = re.sub(r'\b(open|spotify|and|play|the|song|track|music|listen|to|please|oye|for|by|in)\b', ' ', p, flags=re.IGNORECASE)
         clean_track = re.sub(r'[^\w\s]', '', clean_track).strip()
         if clean_track:
@@ -80,10 +93,10 @@ def resolve_authoritative_url(prompt: str) -> str:
     if any(k in p for k in ("crypto", "airdrop", "bitcoin", "ethereum", "solana", "token")):
         return "https://coinmarketcap.com"
 
-    # Products / Startups / Bounties
+    # Products / Startups / Bounties / Repos
     if any(k in p for k in ("product", "startup", "launch", "producthunt", "saas")):
         return "https://www.producthunt.com"
-    if any(k in p for k in ("github", "repo", "bounty", "good first issue", "open source")):
+    if any(k in p for k in ("github", "repo", "bounty", "good first issue", "open source", "readme", "star")):
         return "https://github.com/trending"
     if any(k in p for k in ("grant", "funding", "web3 grant", "gitcoin")):
         return "https://gitcoin.co/grants"
@@ -119,6 +132,56 @@ def sanitize_workflow_urls(workflow: WorkflowDefinition, prompt: str) -> Workflo
 
 # Default pre-built templates
 DEFAULT_TEMPLATES = [
+    WorkflowDefinition(
+        id="template-bounty-hunter",
+        name="GitHub Repo Star & README Intelligence",
+        description="Visits GitHub repositories, stars target repos, scrolls to documentation, extracts README, and synthesizes developer insights.",
+        category="Developer & Open Source",
+        steps=[
+            WorkflowStep(
+                type="navigate",
+                title="1. Open Target Repository",
+                description="Loads repository in authenticated CloakBrowser session",
+                params={"url": "https://github.com/trending"},
+                icon="Globe",
+            ),
+            WorkflowStep(
+                type="click",
+                title="2. Star Repository",
+                description="Stars target repository using Identity Vault session cookies",
+                params={"selector": "button[data-testid='star-button'], button[aria-label*='Star' i]"},
+                icon="MousePointer",
+            ),
+            WorkflowStep(
+                type="scroll",
+                title="3. Scroll to Documentation",
+                description="Scrolls to README markdown container for complete rendering",
+                params={"scroll_times": 2, "delay_ms": 1000, "target": "readme"},
+                icon="ArrowDownCircle",
+            ),
+            WorkflowStep(
+                type="extract_text",
+                title="4. Extract Live README & Architecture",
+                description="Extracts README and synthesizes executive tech stack and feature breakdown",
+                params={"target": "readme", "label": "Repository README"},
+                icon="FileText",
+            ),
+            WorkflowStep(
+                type="screenshot",
+                title="5. Capture Verification Snapshot",
+                description="Captures visual telemetry proof to gallery",
+                params={"label": "repo_proof"},
+                icon="Camera",
+            ),
+            WorkflowStep(
+                type="export",
+                title="6. Export Intelligence Artifacts",
+                description="Saves structured records, summary, and screenshots",
+                params={"notify": True},
+                icon="Save",
+            ),
+        ],
+    ),
     WorkflowDefinition(
         id="template-blog-visual-hunter",
         name="Blog & News Visual Hunter",
@@ -287,6 +350,7 @@ async def synthesize_workflow(req: SynthesizeRequest):
     settings = get_settings()
     prompt = req.prompt.strip()
     smart_seed_url = resolve_authoritative_url(prompt)
+    p_lower = prompt.lower()
 
     # Build available sub-routines library for SuperBrain prompt
     user_workflows = _load_user_workflows()
@@ -299,62 +363,66 @@ async def synthesize_workflow(req: SynthesizeRequest):
     system_prompt = f"""You are Scout's Autonomous SuperBrain & Workflow Compiler. Convert the user's natural language request into a sequence of executable visual action blocks.
 
 CRITICAL PIPELINE RULES:
-1. ALWAYS generate a complete 4 to 5 step end-to-end workflow pipeline. NEVER generate only 1 or 2 steps.
+1. ALWAYS generate a complete 4 to 6 step end-to-end workflow pipeline.
 2. NEVER output 'example.com', 'your-site.com', or generic placeholders for the 'navigate' URL.
 3. Recommended target URL: {smart_seed_url}
 
-🧠 SUPERBRAIN SUB-ROUTINE REUSE ENGINE:
-If the user's request combines or involves tasks that can be fulfilled by an existing saved routine, you CAN include a 'subroutine' action block to delegate that part of the job!
-Available Saved Routines in Library:
-{routines_summary}
-
-Example of Sub-Routine usage:
-{{
-  "type": "subroutine",
-  "title": "Execute Bounty Hunter Routine",
-  "description": "Delegates repository inspection and scraping to saved bounty hunter workflow",
-  "params": {{"workflow_id": "template-bounty-hunter"}},
-  "icon": "Cpu"
-}}
-
-ACTION SEQUENCING PATTERNS:
-- Pattern A: MEDIA & PLAYBACK (Spotify, YouTube, Podcasts, Music)
-  1. 'navigate': target URL (e.g. {smart_seed_url})
-  2. 'scroll': params: {{"scroll_times": 1, "delay_ms": 1000}}
-  3. 'click': title: "Play Top Result Track", params: {{"selector": "button[data-testid='play-button'], [data-testid='tracklist-row'] button, button[aria-label*='Play' i], a#video-title"}}
-  4. 'screenshot': params: {{"label": "playback_proof"}}
-  5. 'export': params: {{"notify": true}}
-
-- Pattern B: SUPERBRAIN MULTI-ROUTINE COMPOSITION
-  1. 'navigate': target starting URL
-  2. 'subroutine': params: {{"workflow_id": "<matching_routine_id>"}}
-  3. 'scroll' or 'click' or 'fill'
-  4. 'screenshot': params: {{"label": "master_execution_proof"}}
-  5. 'export': params: {{"notify": true}}
-
-- Pattern C: CONTENT DISCOVERY & FILTERING (Blogs, News, Repos, Portals)
-  1. 'navigate': target URL
-  2. 'scroll': params: {{"scroll_times": 3, "delay_ms": 1200}}
-  3. 'ai_filter': params: {{"criteria": prompt, "limit": 3}}
-  4. 'screenshot': params: {{"label": "feed_snapshot"}}
-  5. 'export': params: {{"notify": true}}
-
-Supported action block types:
+ACTION BLOCK TYPES:
 - "navigate": {{"url": "https://..."}}
-- "scroll": {{"scroll_times": 2, "delay_ms": 1000, "target": ""}}
-- "click": {{"selector": "css_selector_or_tag"}}
-- "extract_text": {{"target": "readme" | "article" | "auto", "label": "Description"}}
+- "click": {{"selector": "button[data-testid='star-button'], button[aria-label*='Star' i]" | "a" | "button"}}
+- "extract_text": {{"target": "readme" | "article" | "auto", "label": "Repository README & Tech Stack"}}
+- "scroll": {{"scroll_times": 2, "delay_ms": 1000, "target": "readme" | ""}}
 - "ai_filter": {{"criteria": "What to extract/filter", "limit": 3}}
 - "screenshot": {{"label": "descriptive_name"}}
 - "fill": {{"fields": {{"selector": "value"}}}}
 - "subroutine": {{"workflow_id": "workflow-id-or-name"}}
 - "export": {{"notify": true}}
 
+ACTION SEQUENCING PATTERNS:
+- Pattern A: GITHUB STARRING & ACTIONS (e.g. "star repo", "star top repos", "star and bookmark")
+  1. 'navigate': target URL (e.g. {smart_seed_url})
+  2. 'click': title: "Star Target Repository", params: {{"selector": "button[data-testid='star-button'], button[aria-label*='Star' i]"}}
+  3. 'screenshot': title: "Capture Star Confirmation Proof", params: {{"label": "star_proof"}}
+  4. 'export': title: "Export Verification Telemetry", params: {{"notify": true}}
+
+- Pattern B: README EXTRACTION & CODE INTELLIGENCE (e.g. "fetch readme", "extract documentation", "summarize repo")
+  1. 'navigate': target URL (e.g. {smart_seed_url})
+  2. 'scroll': title: "Scroll to Documentation Section", params: {{"scroll_times": 2, "delay_ms": 1000, "target": "readme"}}
+  3. 'extract_text': title: "Extract Live README & Architecture", params: {{"target": "readme", "label": "Repository README"}}
+  4. 'screenshot': title: "Capture Repository Snapshot", params: {{"label": "readme_snapshot"}}
+  5. 'export': title: "Export Intelligence Artifacts", params: {{"notify": true}}
+
+- Pattern C: GITHUB STAR + README COMBINATION (e.g. "star the repo and fetch readme", "star repo and summarize")
+  1. 'navigate': target URL (e.g. {smart_seed_url})
+  2. 'click': title: "Star Target Repository", params: {{"selector": "button[data-testid='star-button'], button[aria-label*='Star' i]"}}
+  3. 'scroll': title: "Scroll to Documentation Section", params: {{"scroll_times": 2, "delay_ms": 1000, "target": "readme"}}
+  4. 'extract_text': title: "Extract Live README & Architecture", params: {{"target": "readme", "label": "Repository README"}}
+  5. 'screenshot': title: "Capture Verification Telemetry", params: {{"label": "repo_proof"}}
+  6. 'export': title: "Export Intelligence Artifacts", params: {{"notify": true}}
+
+- Pattern D: MEDIA & PLAYBACK (Spotify, YouTube, Podcasts, Music)
+  1. 'navigate': target URL (e.g. {smart_seed_url})
+  2. 'scroll': params: {{"scroll_times": 1, "delay_ms": 1000}}
+  3. 'click': title: "Play Top Result Track", params: {{"selector": "button[data-testid='play-button'], [data-testid='tracklist-row'] button, button[aria-label*='Play' i], a#video-title"}}
+  4. 'screenshot': params: {{"label": "playback_proof"}}
+  5. 'export': params: {{"notify": true}}
+
+- Pattern E: CONTENT DISCOVERY & FILTERING (Blogs, News, Portals)
+  1. 'navigate': target URL
+  2. 'scroll': params: {{"scroll_times": 3, "delay_ms": 1200}}
+  3. 'ai_filter': params: {{"criteria": prompt, "limit": 3}}
+  4. 'screenshot': params: {{"label": "feed_snapshot"}}
+  5. 'export': params: {{"notify": true}}
+
+🧠 SUPERBRAIN SUB-ROUTINE REUSE ENGINE:
+If the user's request combines existing routines, you CAN include a 'subroutine' block:
+{routines_summary}
+
 Output ONLY valid JSON matching this schema:
 {{
   "name": "Catchy Workflow Name",
   "description": "Clear 1-sentence description of what this agent does",
-  "category": "Content & Media" | "Automation & Forms" | "Finance & Trading" | "SuperBrain Multi-Routine" | "Custom Agent",
+  "category": "Developer & Open Source" | "Content & Media" | "Automation & Forms" | "Finance & Trading" | "Custom Agent",
   "steps": [
     {{
       "id": "step-1",
@@ -386,7 +454,7 @@ Output ONLY valid JSON matching this schema:
                 id=f"wf-{uuid.uuid4().hex[:8]}",
                 name=data.get("name", "Custom Autonomous Workflow"),
                 description=data.get("description", prompt),
-                category=data.get("category", "SuperBrain Multi-Routine" if any(s.get("type") == "subroutine" for s in data.get("steps", [])) else "Custom Agent"),
+                category=data.get("category", "Developer & Open Source" if "github" in smart_seed_url or "repo" in p_lower else "Custom Agent"),
                 steps=[WorkflowStep(**s) for s in data.get("steps", [])],
             )
             workflow = sanitize_workflow_urls(workflow, prompt)
@@ -394,50 +462,256 @@ Output ONLY valid JSON matching this schema:
         except Exception as exc:
             logger.warning("AI synthesis failed: %s — using fast local fallback compiler", exc)
 
-    # Fast Local Fallback Compiler with Smart Seed Resolution
-    steps = [
-        WorkflowStep(
-            type="navigate",
-            title="1. Open Target Website",
-            description=f"Navigate to {smart_seed_url} in stealth browser",
-            params={"url": smart_seed_url},
-            icon="Globe",
-        ),
-        WorkflowStep(
-            type="scroll",
-            title="2. Smart Scroll Feed",
-            description="Scroll down to reveal cards and dynamic elements",
-            params={"scroll_times": 3, "delay_ms": 1000},
-            icon="ArrowDownCircle",
-        ),
-        WorkflowStep(
-            type="ai_filter",
-            title="3. AI Content Filter",
-            description=f"Filter top items matching: {prompt}",
-            params={"criteria": prompt, "limit": 3},
-            icon="Brain",
-        ),
-        WorkflowStep(
-            type="screenshot",
-            title="4. Capture Visual Proofs",
-            description="Save visual artifact to gallery",
-            params={"label": "workflow_snapshot"},
-            icon="Camera",
-        ),
-        WorkflowStep(
-            type="export",
-            title="5. Export Artifacts",
-            description="Save structured items and image gallery",
-            params={"notify": True},
-            icon="Save",
-        ),
-    ]
+    # Intelligent Local Fallback Compiler with Intent Recognition
+    is_star = "star" in p_lower or "unstar" in p_lower
+    is_readme = "readme" in p_lower or "doc" in p_lower or "extract" in p_lower or "summar" in p_lower
+    is_play = any(k in p_lower for k in ("play", "song", "music", "track", "listen", "spotify", "youtube"))
+    is_form = any(k in p_lower for k in ("form", "apply", "club", "register", "fill", "hackathon"))
+
+    if is_star and is_readme:
+        steps = [
+            WorkflowStep(
+                type="navigate",
+                title="1. Open Target Repository",
+                description=f"Navigate to {smart_seed_url} in authenticated CloakBrowser",
+                params={"url": smart_seed_url},
+                icon="Globe",
+            ),
+            WorkflowStep(
+                type="click",
+                title="2. Star Repository",
+                description="Stars target repository using Identity Vault session cookies",
+                params={"selector": "button[data-testid='star-button'], button[aria-label*='Star' i]"},
+                icon="MousePointer",
+            ),
+            WorkflowStep(
+                type="scroll",
+                title="3. Scroll to Documentation",
+                description="Scrolls to README markdown container",
+                params={"scroll_times": 2, "delay_ms": 1000, "target": "readme"},
+                icon="ArrowDownCircle",
+            ),
+            WorkflowStep(
+                type="extract_text",
+                title="4. Extract Live README & Architecture",
+                description="Extracts README and synthesizes technical breakdown",
+                params={"target": "readme", "label": "Repository README"},
+                icon="FileText",
+            ),
+            WorkflowStep(
+                type="screenshot",
+                title="5. Capture Verification Proof",
+                description="Saves visual telemetry proof to gallery",
+                params={"label": "repo_proof"},
+                icon="Camera",
+            ),
+            WorkflowStep(
+                type="export",
+                title="6. Export Intelligence Artifacts",
+                description="Saves structured records and extracted documentation",
+                params={"notify": True},
+                icon="Save",
+            ),
+        ]
+        wf_cat = "Developer & Open Source"
+        wf_name = f"Star & Analyze {smart_seed_url.split('/')[-1] if '/' in smart_seed_url else 'Repository'}"
+
+    elif is_star:
+        steps = [
+            WorkflowStep(
+                type="navigate",
+                title="1. Open Target Repository",
+                description=f"Navigate to {smart_seed_url} in authenticated CloakBrowser",
+                params={"url": smart_seed_url},
+                icon="Globe",
+            ),
+            WorkflowStep(
+                type="click",
+                title="2. Star Target Repository",
+                description="Stars target repository using Identity Vault session cookies",
+                params={"selector": "button[data-testid='star-button'], button[aria-label*='Star' i]"},
+                icon="MousePointer",
+            ),
+            WorkflowStep(
+                type="screenshot",
+                title="3. Capture Star Confirmation Proof",
+                description="Takes visual snapshot confirming starred state",
+                params={"label": "star_proof"},
+                icon="Camera",
+            ),
+            WorkflowStep(
+                type="export",
+                title="4. Export Verification Telemetry",
+                description="Saves execution telemetry and visual proof",
+                params={"notify": True},
+                icon="Save",
+            ),
+        ]
+        wf_cat = "Developer & Open Source"
+        wf_name = f"Star Repository: {smart_seed_url.split('/')[-1] if '/' in smart_seed_url else 'Target'}"
+
+    elif is_readme:
+        steps = [
+            WorkflowStep(
+                type="navigate",
+                title="1. Open Target Repository",
+                description=f"Navigate to {smart_seed_url} in CloakBrowser",
+                params={"url": smart_seed_url},
+                icon="Globe",
+            ),
+            WorkflowStep(
+                type="scroll",
+                title="2. Scroll to Documentation Section",
+                description="Scrolls down to trigger complete README rendering",
+                params={"scroll_times": 2, "delay_ms": 1000, "target": "readme"},
+                icon="ArrowDownCircle",
+            ),
+            WorkflowStep(
+                type="extract_text",
+                title="3. Extract Live README & Architecture",
+                description="Extracts complete README documentation text and synthesizes developer insights",
+                params={"target": "readme", "label": "Repository README"},
+                icon="FileText",
+            ),
+            WorkflowStep(
+                type="screenshot",
+                title="4. Capture Repository Snapshot",
+                description="Saves high-resolution screenshot to gallery",
+                params={"label": "readme_snapshot"},
+                icon="Camera",
+            ),
+            WorkflowStep(
+                type="export",
+                title="5. Export Intelligence Artifacts",
+                description="Exports structured documentation and screenshot proofs",
+                params={"notify": True},
+                icon="Save",
+            ),
+        ]
+        wf_cat = "Developer & Open Source"
+        wf_name = f"Fetch README: {smart_seed_url.split('/')[-1] if '/' in smart_seed_url else 'Target'}"
+
+    elif is_play:
+        steps = [
+            WorkflowStep(
+                type="navigate",
+                title="1. Open Target Media Player",
+                description=f"Navigate to {smart_seed_url}",
+                params={"url": smart_seed_url},
+                icon="Globe",
+            ),
+            WorkflowStep(
+                type="scroll",
+                title="2. Scroll to Target Track",
+                description="Scrolls to reveal playback controls and tracklist",
+                params={"scroll_times": 1, "delay_ms": 1000},
+                icon="ArrowDownCircle",
+            ),
+            WorkflowStep(
+                type="click",
+                title="3. Play Target Track",
+                description="Triggers live media playback in CloakBrowser",
+                params={"selector": "button[data-testid='play-button'], [data-testid='tracklist-row'] button, button[aria-label*='Play' i]"},
+                icon="MousePointer",
+            ),
+            WorkflowStep(
+                type="screenshot",
+                title="4. Capture Playback Proof",
+                description="Captures live visual snapshot of active player",
+                params={"label": "playback_proof"},
+                icon="Camera",
+            ),
+            WorkflowStep(
+                type="export",
+                title="5. Export Session Artifacts",
+                description="Saves playback telemetry and screenshot",
+                params={"notify": True},
+                icon="Save",
+            ),
+        ]
+        wf_cat = "Content & Media"
+        wf_name = f"Media Player: {prompt[:30]}"
+
+    elif is_form:
+        steps = [
+            WorkflowStep(
+                type="navigate",
+                title="1. Open Application Portal",
+                description=f"Navigate to {smart_seed_url} in CloakBrowser",
+                params={"url": smart_seed_url},
+                icon="Globe",
+            ),
+            WorkflowStep(
+                type="ai_filter",
+                title="2. Question Context Harvester",
+                description="Scan all question blocks and match with User Identity Vault",
+                params={"criteria": "Extract all question blanks, logic puzzles, and personal fields"},
+                icon="Brain",
+            ),
+            WorkflowStep(
+                type="screenshot",
+                title="3. Capture Pre-Fill Verification",
+                description="Take visual snapshot before submission approval",
+                params={"label": "form_verification"},
+                icon="Camera",
+            ),
+            WorkflowStep(
+                type="export",
+                title="4. Stage to Approval Gate",
+                description="Hold at human safety gate for 1-click confirmation",
+                params={"gate": True},
+                icon="ShieldCheck",
+            ),
+        ]
+        wf_cat = "Automation & Forms"
+        wf_name = f"Form Solver: {prompt[:30]}"
+
+    else:
+        steps = [
+            WorkflowStep(
+                type="navigate",
+                title="1. Open Target Website",
+                description=f"Navigate to {smart_seed_url} in stealth browser",
+                params={"url": smart_seed_url},
+                icon="Globe",
+            ),
+            WorkflowStep(
+                type="scroll",
+                title="2. Smart Scroll Feed",
+                description="Scroll down to reveal cards and dynamic elements",
+                params={"scroll_times": 3, "delay_ms": 1000},
+                icon="ArrowDownCircle",
+            ),
+            WorkflowStep(
+                type="ai_filter",
+                title="3. AI Content Filter",
+                description=f"Filter top items matching: {prompt}",
+                params={"criteria": prompt, "limit": 3},
+                icon="Brain",
+            ),
+            WorkflowStep(
+                type="screenshot",
+                title="4. Capture Visual Proofs",
+                description="Save visual artifact to gallery",
+                params={"label": "workflow_snapshot"},
+                icon="Camera",
+            ),
+            WorkflowStep(
+                type="export",
+                title="5. Export Artifacts",
+                description="Save structured items and image gallery",
+                params={"notify": True},
+                icon="Save",
+            ),
+        ]
+        wf_cat = "Custom Agent"
+        wf_name = f"Workflow: {prompt[:35]}..."
 
     workflow = WorkflowDefinition(
         id=f"wf-{uuid.uuid4().hex[:8]}",
-        name=f"Workflow: {prompt[:35]}...",
+        name=wf_name,
         description=prompt,
-        category="Custom Agent",
+        category=wf_cat,
         steps=steps,
     )
     return {"status": "success", "workflow": workflow.model_dump(mode="json")}

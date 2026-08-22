@@ -190,7 +190,7 @@
     "strategy": "intercepted_api",
     "extraction_schema_ref": "opportunity_schema.json",
     "compiled_command_ref": "webcmd_explore_github_com",
-    "last_run_at": "2026-08-21T14:00:14.481314",
+    "last_run_at": "2026-08-22T12:46:52.671578",
     "last_run_status": "success",
     "consecutive_failures": 0,
     "requires_approval_for": []
@@ -204,7 +204,7 @@
     "strategy": "public_dom",
     "extraction_schema_ref": "opportunity_schema.json",
     "compiled_command_ref": "webcmd_explore_gitcoin_co",
-    "last_run_at": "2026-08-21T14:00:18.301575",
+    "last_run_at": "2026-08-22T12:46:10.584264",
     "last_run_status": "success",
     "consecutive_failures": 0,
     "requires_approval_for": []
@@ -218,7 +218,7 @@
     "strategy": "public_dom",
     "extraction_schema_ref": "opportunity_schema.json",
     "compiled_command_ref": "webcmd_explore_web3_foundation",
-    "last_run_at": "2026-08-21T14:00:22.276495",
+    "last_run_at": "2026-08-22T12:46:14.785304",
     "last_run_status": "success",
     "consecutive_failures": 0,
     "requires_approval_for": []
@@ -232,7 +232,7 @@
     "strategy": "intercepted_api",
     "extraction_schema_ref": "opportunity_schema.json",
     "compiled_command_ref": "webcmd_explore_finance_yahoo_com",
-    "last_run_at": "2026-08-21T13:45:29.018275",
+    "last_run_at": "2026-08-22T12:42:03.094726",
     "last_run_status": "success",
     "consecutive_failures": 0,
     "requires_approval_for": []
@@ -246,7 +246,7 @@
     "strategy": "public_dom",
     "extraction_schema_ref": "opportunity_schema.json",
     "compiled_command_ref": "webcmd_explore_www_moneycontrol_com",
-    "last_run_at": "2026-08-21T13:45:34.095984",
+    "last_run_at": "2026-08-22T12:42:08.165728",
     "last_run_status": "success",
     "consecutive_failures": 0,
     "requires_approval_for": []
@@ -260,7 +260,7 @@
     "strategy": "public_dom",
     "extraction_schema_ref": "opportunity_schema.json",
     "compiled_command_ref": "webcmd_explore_solana_foundation",
-    "last_run_at": "2026-08-21T14:00:30.287406",
+    "last_run_at": "2026-08-22T12:46:20.690099",
     "last_run_status": "success",
     "consecutive_failures": 0,
     "requires_approval_for": []
@@ -274,7 +274,7 @@
     "strategy": "public_dom",
     "extraction_schema_ref": "opportunity_schema.json",
     "compiled_command_ref": "webcmd_explore_algorand_foundation",
-    "last_run_at": "2026-08-21T14:00:42.589763",
+    "last_run_at": "2026-08-22T12:46:27.501513",
     "last_run_status": "success",
     "consecutive_failures": 0,
     "requires_approval_for": []

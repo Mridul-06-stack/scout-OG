@@ -112,6 +112,10 @@ def _get_auth_cookies_script(target_url: str = "") -> str:
         custom_vault = data.get("custom_vault", {})
         cookies = []
 
+        # Extract GitHub username from profile if available
+        gh_url = data.get("github_url", "")
+        gh_user = gh_url.rstrip("/").split("/")[-1] if gh_url and "/" in gh_url else "Shlok1729"
+
         # GitHub auth session cookie from Identity Vault
         github_session = (
             custom_vault.get("github_user_session")
@@ -121,7 +125,7 @@ def _get_auth_cookies_script(target_url: str = "") -> str:
         if github_session and ("github.com" in target_url.lower() or not target_url):
             cookies.append({
                 "name": "user_session",
-                "value": github_session,
+                "value": str(github_session).strip(),
                 "domain": ".github.com",
                 "path": "/",
                 "secure": True,
@@ -129,9 +133,8 @@ def _get_auth_cookies_script(target_url: str = "") -> str:
             })
             cookies.append({
                 "name": "__Host-user_session_same_site",
-                "value": github_session,
-                "domain": "github.com",
-                "path": "/",
+                "value": str(github_session).strip(),
+                "url": "https://github.com",
                 "secure": True,
                 "httpOnly": True,
             })
@@ -142,10 +145,16 @@ def _get_auth_cookies_script(target_url: str = "") -> str:
                 "path": "/",
                 "secure": True,
             })
+            cookies.append({
+                "name": "dotcom_user",
+                "value": gh_user,
+                "domain": ".github.com",
+                "path": "/",
+                "secure": True,
+            })
 
         # YouTube / Google auth cookies from Identity Vault
         if "youtube.com" in target_url.lower() or not target_url:
-            # 1. Raw cookie header string (e.g. "LOGIN_INFO=...; SID=...; __Secure-3PSID=...")
             raw_yt_cookie = custom_vault.get("youtube_cookie_header") or custom_vault.get("youtube_cookies_raw") or custom_vault.get("youtube_cookie")
             if raw_yt_cookie and isinstance(raw_yt_cookie, str):
                 for pair in raw_yt_cookie.split(";"):
@@ -170,7 +179,6 @@ def _get_auth_cookies_script(target_url: str = "") -> str:
                                     "secure": True,
                                 })
 
-            # 2. Key-value vault entries
             for yt_key in ["LOGIN_INFO", "SID", "HSID", "SSID", "APISID", "SAPISID", "__Secure-1PSID", "__Secure-3PSID", "__Secure-1PAPISID", "__Secure-3PAPISID", "VISITOR_INFO1_LIVE", "YSC"]:
                 val = custom_vault.get(yt_key) or custom_vault.get(f"youtube_{yt_key.lower()}") or custom_vault.get(f"yt_{yt_key.lower()}")
                 if val:
@@ -190,7 +198,7 @@ def _get_auth_cookies_script(target_url: str = "") -> str:
                             "secure": True,
                         })
 
-        # Generic session cookies stored in custom_vault (JSON array or list from Cookie-Editor / Netscape)
+        # Generic session cookies stored in custom_vault (JSON array or list)
         for c_key in ["session_cookies", "youtube_cookies", "google_cookies", "browser_cookies"]:
             if c_key in custom_vault:
                 try:
@@ -200,20 +208,25 @@ def _get_auth_cookies_script(target_url: str = "") -> str:
                     if isinstance(raw, list):
                         for c in raw:
                             if isinstance(c, dict) and "name" in c and "value" in c:
+                                c_name = str(c["name"]).strip()
+                                is_host_cookie = c_name.startswith("__Host-")
                                 norm_cookie = {
-                                    "name": str(c["name"]).strip(),
+                                    "name": c_name,
                                     "value": str(c["value"]).strip(),
-                                    "domain": str(c.get("domain", ".youtube.com")).strip(),
-                                    "path": str(c.get("path", "/")).strip(),
                                     "secure": bool(c.get("secure", True)),
                                 }
-                                # Sanitize sameSite for Playwright compatibility
+                                if is_host_cookie:
+                                    norm_cookie["url"] = str(c.get("url", target_url or "https://github.com")).strip()
+                                else:
+                                    norm_cookie["domain"] = str(c.get("domain", ".youtube.com")).strip()
+                                    norm_cookie["path"] = str(c.get("path", "/")).strip()
+
                                 raw_ss = str(c.get("sameSite", "")).lower()
                                 if raw_ss in ["no_restriction", "none"]:
                                     norm_cookie["sameSite"] = "None"
                                 elif raw_ss in ["lax", "strict"]:
                                     norm_cookie["sameSite"] = raw_ss.capitalize()
-                                
+
                                 if "httpOnly" in c:
                                     norm_cookie["httpOnly"] = bool(c["httpOnly"])
                                 cookies.append(norm_cookie)
@@ -221,17 +234,20 @@ def _get_auth_cookies_script(target_url: str = "") -> str:
                     logger.debug("Could not parse %s: %s", c_key, parse_err)
 
         if cookies:
-            # Deduplicate cookies by (name, domain)
             deduped = {}
             for c in cookies:
-                deduped[(c["name"], c.get("domain", ""))] = c
+                key = (c["name"], c.get("domain", c.get("url", "")))
+                deduped[key] = c
             valid_cookies = list(deduped.values())
             cookies_json = json.dumps(valid_cookies)
             return f"""
-try {{
-    await page.context().addCookies({cookies_json});
-}} catch (cookieErr) {{
-    console.log('Non-fatal cookie injection notice:', cookieErr.message);
+const _scout_cookies = {cookies_json};
+for (const _c of _scout_cookies) {{
+    try {{
+        await page.context().addCookies([_c]);
+    }} catch (_cErr) {{
+        console.log('Cookie injection skip:', _c.name, _cErr.message);
+    }}
 }}
 """
     except Exception as exc:
@@ -548,47 +564,94 @@ try {{
                     
                     extract_text_script = """
 const textContent = await page.evaluate(() => {
+    const pageTitle = document.title || '';
+    const pageUrl = window.location.href || '';
+
     // 1. Try markdown / readme containers first
-    const readmeEl = document.querySelector('article.markdown-body, #readme, div[data-target="readme-toc.content"], .markdown-body');
+    const readmeEl = document.querySelector('article.markdown-body, #readme, div[data-target="readme-toc.content"], .markdown-body, div#readme article');
     if (readmeEl && readmeEl.innerText && readmeEl.innerText.length > 50) {
-        return { source: 'readme_container', text: readmeEl.innerText.trim() };
+        return { source: 'readme_container', text: readmeEl.innerText.trim(), pageTitle, pageUrl };
     }
 
     // 2. Try article or main content tags
-    const articleEl = document.querySelector('article, main, .post-content, #content, .entry-content');
+    const articleEl = document.querySelector('article, main, .post-content, #content, .entry-content, [role="main"]');
     if (articleEl && articleEl.innerText && articleEl.innerText.length > 80) {
-        return { source: 'article_container', text: articleEl.innerText.trim() };
+        return { source: 'article_container', text: articleEl.innerText.trim(), pageTitle, pageUrl };
     }
 
     // 3. Heuristic: locate heading containing README or About and extract parent container text
     const headings = Array.from(document.querySelectorAll('h1, h2, h3, h4'));
     const matchedH = headings.find(h => {
         const t = (h.innerText || '').toLowerCase();
-        return t.includes('readme') || t.includes('about') || t.includes('overview');
+        return t.includes('readme') || t.includes('about') || t.includes('overview') || t.includes('documentation');
     });
     if (matchedH) {
         const parent = matchedH.closest('section, article, div') || matchedH.parentElement;
         if (parent && parent.innerText) {
-            return { source: 'heading_section', text: parent.innerText.trim() };
+            return { source: 'heading_section', text: parent.innerText.trim(), pageTitle, pageUrl };
         }
     }
 
     // 4. Fallback: clean body text
-    return { source: 'body_fallback', text: document.body.innerText.slice(0, 4000).trim() };
+    return { source: 'body_fallback', text: (document.body ? document.body.innerText : '').slice(0, 6000).trim(), pageTitle, pageUrl };
 });
 
-console.log(JSON.stringify({ status: 'success', text: textContent.text, source: textContent.source, length: textContent.text.length }));
+console.log(JSON.stringify({
+    status: 'success',
+    text: textContent.text || '',
+    source: textContent.source || 'DOM',
+    length: (textContent.text || '').length,
+    pageTitle: textContent.pageTitle || '',
+    pageUrl: textContent.pageUrl || ''
+}));
 """
-                    out = await adapter._run_cli(["--session", session_id, "browser", "run", "--stdin"], stdin_input=extract_text_script, timeout=30)
+                    out = await adapter._run_cli(["--session", session_id, "browser", "run", "--stdin"], stdin_input=extract_text_script, timeout=35)
                     extracted_text_data = _extract_json_from_webcmd(out) or {}
                     extracted_body = extracted_text_data.get("text", "")
-                    
-                    result.extracted_text = extracted_body
-                    step_res.output_message = f"Extracted {len(extracted_body)} characters of {label} ({extracted_text_data.get('source', 'DOM')})."
+                    page_title = extracted_text_data.get("pageTitle", "")
+                    page_url_reported = extracted_text_data.get("pageUrl", current_url)
+
+                    # Synthesize deep AI analysis and developer intelligence if OpenAI is configured
+                    settings = get_settings()
+                    synthesized_output = extracted_body
+                    if settings.openai_api_key and extracted_body and len(extracted_body) > 100:
+                        try:
+                            from openai import AsyncOpenAI
+                            client = AsyncOpenAI(api_key=settings.openai_api_key, timeout=18.0)
+                            doc_prompt = f"""You are Scout's Autonomous Tech Intelligence & Code Analyzer.
+Analyze the following extracted repository README / documentation from '{page_title}' ({page_url_reported}):
+
+EXTRACTED TEXT:
+{extracted_body[:8000]}
+
+Generate an executive, developer-friendly structured summary in clean GitHub Markdown with the following sections:
+# 🔭 Tech Radar Deep Dive: {page_title}
+
+## 📌 Executive Overview & Core Mission
+## ⚡ Tech Stack, Dependencies & Architecture
+## 🚀 Key Highlights, Features & API Capabilities
+## 🛠️ Quickstart / Installation / Usage
+## 💡 Why It's Impressive & Practical Takeaways
+
+Keep it crisp, highly technical, and immediately actionable for developers!"""
+                            ai_res = await client.chat.completions.create(
+                                model=settings.openai_model,
+                                temperature=0.2,
+                                messages=[{"role": "user", "content": doc_prompt}],
+                            )
+                            ai_doc = ai_res.choices[0].message.content or ""
+                            if ai_doc:
+                                synthesized_output = ai_doc + "\n\n---\n\n### 📄 Raw Extracted Documentation Excerpt:\n\n" + extracted_body[:3000]
+                        except Exception as exc:
+                            logger.warning("AI README summarization note: %s", exc)
+
+                    result.extracted_text = synthesized_output
+                    step_res.output_message = f"✨ Extracted & Analyzed {len(extracted_body):,} characters of {label} from {page_title or 'Target'}."
                     step_res.data = {
-                        "text": extracted_body,
-                        "character_count": len(extracted_body),
+                        "text": synthesized_output,
+                        "raw_length": len(extracted_body),
                         "source": extracted_text_data.get("source"),
+                        "page_title": page_title,
                     }
 
                 elif step.type == "ai_filter":
@@ -737,12 +800,14 @@ try {{
     const isPlay = {str(is_play_action).lower()};
     const targetIndices = {json.dumps(target_indices)};
     const targetIntent = {json.dumps(intent_text)};
+    const hostname = await page.evaluate(() => window.location.hostname);
 
-    // A. Specialized GitHub Star/Unstar Handler
-    if (isStar || isUnstar) {{
+    // A. Specialized GitHub Star/Unstar Handler (Single Repo & Multi-Repo Lists)
+    if (isStar || isUnstar || hostname.includes('github.com')) {{
+        // First check if on a single repo page or listing page
         const starResult = await page.evaluate((args) => {{
-            const rows = document.querySelectorAll('article.Box-row, .repo-list-item, .Box-row');
             const actions = [];
+            const rows = Array.from(document.querySelectorAll('article.Box-row, .repo-list-item, .Box-row, [data-testid="results-list"] > div'));
             const targetIdxs = args.targetIndices || [0];
 
             if (rows.length > 0) {{
@@ -752,7 +817,7 @@ try {{
                     const repoLink = row.querySelector('h2 a, a[href*="/"]:not([href*="star"]):not([href*="sponsor"]):not([href*="login"])');
                     const repoName = repoLink ? (repoLink.pathname ? repoLink.pathname.slice(1) : (repoLink.getAttribute('href') || '')) : ('Repo #' + (idx + 1));
                     
-                    const starBtn = row.querySelector('button[aria-label*="Star"], button[aria-label*="star"], form[action*="star"] button, button:has(svg.octicon-star), button[data-hydro-click*="STAR"], button[value="Star"]');
+                    const starBtn = row.querySelector('button[data-testid="star-button"], button[aria-label*="Star" i], button[aria-label*="star" i], form[action*="star"] button, button:has(svg.octicon-star), button[data-hydro-click*="STAR"], button[value="Star"]');
                     if (!starBtn) continue;
 
                     const ariaLabel = (starBtn.getAttribute('aria-label') || '').toLowerCase();
@@ -768,7 +833,7 @@ try {{
                         }}
                     }} else {{
                         if (isAlreadyStarred) {{
-                            actions.push({{ index: idx + 1, repo: repoName, action: 'already_starred (kept)' }});
+                            actions.push({{ index: idx + 1, repo: repoName, action: 'already_starred (kept ⭐)' }});
                         }} else {{
                             starBtn.click();
                             actions.push({{ index: idx + 1, repo: repoName, action: 'starred ⭐' }});
@@ -778,30 +843,47 @@ try {{
             }}
 
             if (actions.length === 0) {{
-                const repoStarBtn = document.querySelector('#star-button, form.unstarred button, [aria-label*="Star this repository"]');
+                // Single repository page
+                const repoStarBtn = document.querySelector('button[data-testid="star-button"], [data-testid="star-button"], button[aria-label^="Star " i], button[aria-label^="Unstar " i], #star-button, form.unstarred button, form.starred button, button:has(svg.octicon-star), button.js-toggler-target[aria-label*="Star" i]');
                 if (repoStarBtn) {{
-                    repoStarBtn.click();
-                    actions.push({{ index: 1, repo: document.title || 'Current Repository', action: 'starred ⭐' }});
+                    const ariaLabel = (repoStarBtn.getAttribute('aria-label') || '').toLowerCase();
+                    const innerText = (repoStarBtn.innerText || '').toLowerCase();
+                    const isAlreadyStarred = ariaLabel.includes('unstar') || ariaLabel.includes('starred') || innerText.includes('starred');
+                    const repoName = window.location.pathname.slice(1) || document.title || 'Repository';
+
+                    if (args.isUnstar) {{
+                        if (isAlreadyStarred) {{
+                            repoStarBtn.click();
+                            actions.push({{ index: 1, repo: repoName, action: 'unstarred' }});
+                        }} else {{
+                            actions.push({{ index: 1, repo: repoName, action: 'already_unstarred (kept)' }});
+                        }}
+                    }} else {{
+                        if (isAlreadyStarred) {{
+                            actions.push({{ index: 1, repo: repoName, action: 'already_starred (kept ⭐)' }});
+                        }} else {{
+                            repoStarBtn.click();
+                            actions.push({{ index: 1, repo: repoName, action: 'starred ⭐' }});
+                        }}
+                    }}
                 }}
             }}
             return actions;
         }}, {{ targetIndices, isUnstar }});
 
         if (starResult && starResult.length > 0) {{
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(2500);
             console.log(JSON.stringify({{ status: 'success', action: 'star', clickedItems: starResult, current_url: page.url() }}));
             return;
         }}
     }}
 
     // B. Search Engine Result Link Navigation (e.g. DuckDuckGo, Google, Bing)
-    const hostname = await page.evaluate(() => window.location.hostname);
     if (hostname.includes('duckduckgo.com') || hostname.includes('google.com') || hostname.includes('bing.com')) {{
         const searchLinkResult = await page.evaluate((intent) => {{
             const results = Array.from(document.querySelectorAll('a[data-testid="result-title-a"], a.result__a, h2 a, h3 a, div.g a, [data-testid="result"] a'));
             if (results.length === 0) return {{ success: false }};
 
-            // If intent mentions a specific domain (like spotify, github, youtube), prioritize matching result
             let targetResult = null;
             if (intent.includes('spotify')) {{
                 targetResult = results.find(a => (a.href || '').includes('spotify.com'));
@@ -839,7 +921,6 @@ try {{
     // C. Media & Spotify Play Control Actuator
     if (isPlay || hostname.includes('spotify.com') || hostname.includes('youtube.com')) {{
         const playResult = await page.evaluate(() => {{
-            // 1. Spotify Web Player Play Buttons & Tracklist rows
             const spotifyPlayBtn = document.querySelector('button[data-testid="play-button"], button[data-testid="action-bar-row-play-button"], button[aria-label*="Play" i], [data-testid="top-result-card"] button, [data-testid="tracklist-row"] button');
             if (spotifyPlayBtn) {{
                 spotifyPlayBtn.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
@@ -847,7 +928,6 @@ try {{
                 return {{ success: true, player: 'spotify', element: 'play_button', label: spotifyPlayBtn.getAttribute('aria-label') || 'Play' }};
             }}
 
-            // 2. Click top track row if play button not directly exposed
             const trackRow = document.querySelector('[data-testid="tracklist-row"], [role="row"], div[role="row"]');
             if (trackRow) {{
                 trackRow.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
@@ -855,7 +935,6 @@ try {{
                 return {{ success: true, player: 'spotify', element: 'track_row', text: trackRow.innerText ? trackRow.innerText.slice(0, 60) : 'track' }};
             }}
 
-            // 3. YouTube Video Link / Player
             const ytVideo = document.querySelector('ytd-video-renderer a#video-title, a#thumbnail, button.ytp-play-button');
             if (ytVideo) {{
                 ytVideo.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
@@ -863,7 +942,6 @@ try {{
                 return {{ success: true, player: 'youtube', element: 'video', text: ytVideo.getAttribute('title') || ytVideo.innerText || 'video' }};
             }}
 
-            // 4. HTML5 Audio / Video Elements
             const mediaEl = document.querySelector('audio, video');
             if (mediaEl && mediaEl.play) {{
                 mediaEl.play();
@@ -905,7 +983,7 @@ try {{
                     clicked_items = click_data.get("clickedItems", [])
                     if clicked_items:
                         action_summaries = [f"{item.get('repo', 'Item')}: {item.get('action', 'done')}" for item in clicked_items]
-                        step_res.output_message = f"Executed actions on {len(clicked_items)} items: {', '.join(action_summaries[:3])}"
+                        step_res.output_message = f"⭐ Executed GitHub actions on {len(clicked_items)} target(s): {', '.join(action_summaries[:3])}"
                     elif click_data.get("action") == "media_play":
                         step_res.output_message = f"Initiated playback: {click_data.get('details', {}).get('element', 'media')} on {click_data.get('details', {}).get('player', 'player')}."
                     elif click_data.get("action") == "search_nav":
