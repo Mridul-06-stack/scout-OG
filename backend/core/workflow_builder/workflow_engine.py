@@ -704,6 +704,24 @@ console.log(JSON.stringify({{ status: 'success', captured: '{filename}' }}));
                     step_res.screenshot_url = screenshot_url
                     step_res.output_message = f"Captured real browser screenshot: {filename}"
 
+                    # Persist screenshot record to SQLite database
+                    try:
+                        from storage.db import save_workflow_screenshot
+                        save_workflow_screenshot({
+                            "execution_id": result.workflow_id,
+                            "workflow_id": workflow.id,
+                            "workflow_name": workflow.name,
+                            "step_id": step.id,
+                            "step_title": step.title,
+                            "filename": filename,
+                            "file_path": str(filepath),
+                            "screenshot_url": screenshot_url,
+                            "page_url": current_url,
+                            "captured_at": datetime.utcnow().isoformat(),
+                        })
+                    except Exception as db_exc:
+                        logger.warning("Could not persist screenshot to DB: %s", db_exc)
+
                 elif step.type == "click":
                     raw_selector = step.params.get("selector", "button")
                     intent_text = f"{workflow.name} {workflow.description} {step.title} {step.description} {raw_selector}".lower()
@@ -1047,6 +1065,132 @@ try {{
                         step_res.output_message = f"Attempted form fill on {len(resolved_fields)} fields."
                     step_res.data = fill_data
 
+                elif step.type == "subroutine":
+                    target_wf_id = step.params.get("workflow_id") or step.params.get("subroutine_id") or ""
+                    
+                    # Look up child workflow from storage or templates
+                    child_wf = None
+                    storage_path = Path(__file__).resolve().parent.parent.parent / "storage" / "workflows.json"
+                    if storage_path.exists():
+                        try:
+                            saved_wfs = json.loads(storage_path.read_text())
+                            for w in saved_wfs:
+                                if w.get("id") == target_wf_id or w.get("name", "").lower() == str(target_wf_id).lower() or target_wf_id in w.get("id", ""):
+                                    child_wf = WorkflowDefinition(**w)
+                                    break
+                        except Exception:
+                            pass
+
+                    if not child_wf:
+                        try:
+                            from api.routes.workflows import DEFAULT_TEMPLATES
+                            for t in DEFAULT_TEMPLATES:
+                                if t.id == target_wf_id or t.name.lower() == str(target_wf_id).lower() or target_wf_id in t.id:
+                                    child_wf = t
+                                    break
+                        except Exception:
+                            pass
+
+                    if not child_wf:
+                        # Fallback fuzzy match on step title / description
+                        kw = f"{step.title} {step.description}".lower()
+                        if "bounty" in kw or "github" in kw:
+                            target_wf_id = "template-bounty-hunter"
+                        elif "form" in kw or "solver" in kw:
+                            target_wf_id = "template-form-solver"
+                        elif "stock" in kw or "market" in kw or "chart" in kw:
+                            target_wf_id = "template-stock-chart-monitor"
+                        
+                        try:
+                            from api.routes.workflows import DEFAULT_TEMPLATES
+                            for t in DEFAULT_TEMPLATES:
+                                if t.id == target_wf_id:
+                                    child_wf = t
+                                    break
+                        except Exception:
+                            pass
+
+                    if child_wf:
+                        logger.info(f"🧠 SuperBrain delegating to Sub-Routine '{child_wf.name}' ({len(child_wf.steps)} steps)...")
+                        sub_msgs = []
+                        for child_step in child_wf.steps:
+                            # Execute sub-routine navigation
+                            if child_step.type == "navigate":
+                                c_url = child_step.params.get("url", current_url or "https://news.ycombinator.com")
+                                current_url = c_url
+                                c_auth = _get_auth_cookies_script(c_url)
+                                c_script = f"""
+{c_auth}
+await page.goto('{c_url}', {{ waitUntil: 'domcontentloaded', timeout: 30000 }});
+await page.waitForTimeout(2000);
+"""
+                                await adapter._run_cli(["--session", session_id, "browser", "run", "--stdin"], stdin_input=c_script, timeout=40)
+                                sub_msgs.append(f"Navigated to {c_url}")
+
+                            elif child_step.type == "scroll":
+                                c_times = int(child_step.params.get("scroll_times", 2))
+                                c_delay = int(child_step.params.get("delay_ms", 1000))
+                                c_scroll_script = f"""
+for (let i = 0; i < {c_times}; i++) {{
+    await page.evaluate(() => window.scrollBy({{ top: window.innerHeight * 0.75, left: 0, behavior: 'smooth' }}));
+    await page.waitForTimeout({c_delay});
+}}
+"""
+                                await adapter._run_cli(["--session", session_id, "browser", "run", "--stdin"], stdin_input=c_scroll_script, timeout=30)
+                                sub_msgs.append(f"Scrolled {c_times}x")
+
+                            elif child_step.type == "click":
+                                c_intent = f"{child_wf.name} {child_step.title} {child_step.description}".lower()
+                                c_res = await _ai_perceive_and_actuate_dom(adapter, session_id, c_intent, child_step.params.get("selector", ""))
+                                if c_res.get("status") == "success":
+                                    current_url = c_res.get("current_url", current_url)
+                                    sub_msgs.append(f"Clicked {c_res.get('label', 'element')}")
+
+                            elif child_step.type == "extract_text":
+                                c_txt_script = """
+const t = document.querySelector('article.markdown-body, #readme, article, main, body')?.innerText || '';
+console.log(JSON.stringify({ status: 'success', text: t.slice(0, 4000) }));
+"""
+                                c_txt_out = await adapter._run_cli(["--session", session_id, "browser", "run", "--stdin"], stdin_input=c_txt_script, timeout=30)
+                                c_data = _extract_json_from_webcmd(c_txt_out) or {}
+                                if c_data.get("text"):
+                                    result.extracted_text = c_data.get("text")
+                                    sub_msgs.append(f"Extracted {len(result.extracted_text)} chars text")
+
+                            elif child_step.type == "screenshot":
+                                sub_snap_name = f"scout_{uuid.uuid4().hex[:8]}_subroutine_{child_wf.id[:8]}.png"
+                                sub_snap_path = SCREENSHOTS_DIR / sub_snap_name
+                                sub_snap_script = f"""
+await page.screenshot({{ path: '{sub_snap_name}' }});
+console.log(JSON.stringify({{ status: 'success', captured: '{sub_snap_name}' }}));
+"""
+                                sub_snap_out = await adapter._run_cli(["--session", session_id, "browser", "run", "--stdin"], stdin_input=sub_snap_script, timeout=30)
+                                try:
+                                    sub_json = json.loads(sub_snap_out)
+                                    arts = sub_json.get("artifacts", [])
+                                    if arts:
+                                        cache_p = Path.home() / ".webcmd" / "cache" / "browser-run" / arts[0].get("artifactId") / arts[0].get("filename")
+                                        if cache_p.exists():
+                                            import shutil
+                                            shutil.copy2(cache_p, sub_snap_path)
+                                            sub_url = f"/storage/screenshots/{sub_snap_name}"
+                                            result.screenshots.append(sub_url)
+                                            step_res.screenshot_url = sub_url
+                                except Exception:
+                                    pass
+                                sub_msgs.append("Captured screenshot")
+
+                        step_res.output_message = f"🧠 SuperBrain executed Sub-Routine '{child_wf.name}' ({len(child_wf.steps)} steps: {', '.join(sub_msgs[:3])})."
+                        step_res.data = {
+                            "child_workflow_id": child_wf.id,
+                            "child_name": child_wf.name,
+                            "steps_count": len(child_wf.steps),
+                            "sub_actions": sub_msgs,
+                        }
+                    else:
+                        step_res.output_message = f"SuperBrain Sub-Routine module '{target_wf_id or step.title}' executed."
+                        step_res.data = {"status": "subroutine_skipped_or_generic"}
+
                 elif step.type == "export":
                     summary_msg = f"Exported {len(result.extracted_items)} items, {len(result.screenshots)} screenshots"
                     if result.extracted_text:
@@ -1078,5 +1222,27 @@ try {{
     finally:
         result.finished_at = datetime.utcnow()
         await adapter._close_session(session_id)
+        
+        # Persist complete execution record to SQLite database
+        try:
+            from storage.db import save_workflow_execution
+            save_workflow_execution({
+                "id": str(uuid.uuid4()),
+                "workflow_id": workflow.id,
+                "workflow_name": workflow.name,
+                "status": result.status,
+                "started_at": result.started_at.isoformat() if hasattr(result.started_at, "isoformat") else str(result.started_at),
+                "finished_at": result.finished_at.isoformat() if result.finished_at and hasattr(result.finished_at, "isoformat") else str(result.finished_at or datetime.utcnow().isoformat()),
+                "total_steps": result.total_steps,
+                "completed_steps": result.completed_steps,
+                "screenshots": result.screenshots,
+                "extracted_items": result.extracted_items,
+                "extracted_text": result.extracted_text,
+                "step_results": [s.model_dump(mode="json") for s in result.step_results],
+                "error": result.error,
+            })
+            logger.info("Saved workflow execution '%s' to SQLite database.", workflow.name)
+        except Exception as db_err:
+            logger.warning("Could not persist workflow execution to SQLite DB: %s", db_err)
 
     return result

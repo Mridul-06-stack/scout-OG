@@ -288,26 +288,48 @@ async def synthesize_workflow(req: SynthesizeRequest):
     prompt = req.prompt.strip()
     smart_seed_url = resolve_authoritative_url(prompt)
 
-    system_prompt = f"""You are Scout's Autonomous Workflow Compiler. Convert the user's natural language request into a sequence of executable visual action blocks.
+    # Build available sub-routines library for SuperBrain prompt
+    user_workflows = _load_user_workflows()
+    all_known_routines = DEFAULT_TEMPLATES + user_workflows
+    routines_summary = "\n".join([
+        f"- [ID: {r.id}] \"{r.name}\" ({len(r.steps)} steps): {r.description}"
+        for r in all_known_routines[:10]
+    ])
+
+    system_prompt = f"""You are Scout's Autonomous SuperBrain & Workflow Compiler. Convert the user's natural language request into a sequence of executable visual action blocks.
 
 CRITICAL PIPELINE RULES:
 1. ALWAYS generate a complete 4 to 5 step end-to-end workflow pipeline. NEVER generate only 1 or 2 steps.
 2. NEVER output 'example.com', 'your-site.com', or generic placeholders for the 'navigate' URL.
 3. Recommended target URL: {smart_seed_url}
 
+🧠 SUPERBRAIN SUB-ROUTINE REUSE ENGINE:
+If the user's request combines or involves tasks that can be fulfilled by an existing saved routine, you CAN include a 'subroutine' action block to delegate that part of the job!
+Available Saved Routines in Library:
+{routines_summary}
+
+Example of Sub-Routine usage:
+{{
+  "type": "subroutine",
+  "title": "Execute Bounty Hunter Routine",
+  "description": "Delegates repository inspection and scraping to saved bounty hunter workflow",
+  "params": {{"workflow_id": "template-bounty-hunter"}},
+  "icon": "Cpu"
+}}
+
 ACTION SEQUENCING PATTERNS:
 - Pattern A: MEDIA & PLAYBACK (Spotify, YouTube, Podcasts, Music)
   1. 'navigate': target URL (e.g. {smart_seed_url})
-  2. 'scroll': params: {{"scroll_times": 1, "delay_ms": 1000}} (wait and reveal track list)
+  2. 'scroll': params: {{"scroll_times": 1, "delay_ms": 1000}}
   3. 'click': title: "Play Top Result Track", params: {{"selector": "button[data-testid='play-button'], [data-testid='tracklist-row'] button, button[aria-label*='Play' i], a#video-title"}}
   4. 'screenshot': params: {{"label": "playback_proof"}}
   5. 'export': params: {{"notify": true}}
 
-- Pattern B: SEARCH ENGINE & LINK FOLLOWING (Search DuckDuckGo/Google -> Open Target Result)
-  1. 'navigate': search engine query URL
-  2. 'click': title: "Open Top Search Result Link", params: {{"selector": "a[data-testid='result-title-a'], a.result__a, h2 a, h3 a"}}
-  3. 'scroll': params: {{"scroll_times": 2, "delay_ms": 1000}}
-  4. 'screenshot' or 'extract_text': capture destination page proof or text
+- Pattern B: SUPERBRAIN MULTI-ROUTINE COMPOSITION
+  1. 'navigate': target starting URL
+  2. 'subroutine': params: {{"workflow_id": "<matching_routine_id>"}}
+  3. 'scroll' or 'click' or 'fill'
+  4. 'screenshot': params: {{"label": "master_execution_proof"}}
   5. 'export': params: {{"notify": true}}
 
 - Pattern C: CONTENT DISCOVERY & FILTERING (Blogs, News, Repos, Portals)
@@ -317,14 +339,6 @@ ACTION SEQUENCING PATTERNS:
   4. 'screenshot': params: {{"label": "feed_snapshot"}}
   5. 'export': params: {{"notify": true}}
 
-- Pattern D: GITHUB / REPO INSPECTION & STARRING
-  1. 'navigate': GitHub target URL
-  2. 'scroll': params: {{"scroll_times": 2, "delay_ms": 1000}}
-  3. 'click': title: "Star Top Repository", params: {{"selector": "button[aria-label*='Star']"}}
-  4. 'extract_text': params: {{"target": "readme", "label": "Repository README"}}
-  5. 'screenshot': params: {{"label": "repository_proof"}}
-  6. 'export': params: {{"notify": true}}
-
 Supported action block types:
 - "navigate": {{"url": "https://..."}}
 - "scroll": {{"scroll_times": 2, "delay_ms": 1000, "target": ""}}
@@ -333,21 +347,22 @@ Supported action block types:
 - "ai_filter": {{"criteria": "What to extract/filter", "limit": 3}}
 - "screenshot": {{"label": "descriptive_name"}}
 - "fill": {{"fields": {{"selector": "value"}}}}
+- "subroutine": {{"workflow_id": "workflow-id-or-name"}}
 - "export": {{"notify": true}}
 
 Output ONLY valid JSON matching this schema:
 {{
   "name": "Catchy Workflow Name",
   "description": "Clear 1-sentence description of what this agent does",
-  "category": "Content & Media" | "Automation & Forms" | "Finance & Trading" | "Custom Agent",
+  "category": "Content & Media" | "Automation & Forms" | "Finance & Trading" | "SuperBrain Multi-Routine" | "Custom Agent",
   "steps": [
     {{
       "id": "step-1",
-      "type": "navigate" | "scroll" | "click" | "extract_text" | "ai_filter" | "screenshot" | "fill" | "export",
+      "type": "navigate" | "scroll" | "click" | "extract_text" | "ai_filter" | "screenshot" | "fill" | "subroutine" | "export",
       "title": "Short Step Title",
       "description": "What this step performs",
       "params": {{}},
-      "icon": "Globe" | "ArrowDownCircle" | "MousePointer" | "FileText" | "Brain" | "Camera" | "Save"
+      "icon": "Globe" | "ArrowDownCircle" | "MousePointer" | "FileText" | "Brain" | "Camera" | "Cpu" | "Save"
     }}
   ]
 }}"""
@@ -371,7 +386,7 @@ Output ONLY valid JSON matching this schema:
                 id=f"wf-{uuid.uuid4().hex[:8]}",
                 name=data.get("name", "Custom Autonomous Workflow"),
                 description=data.get("description", prompt),
-                category=data.get("category", "Custom Agent"),
+                category=data.get("category", "SuperBrain Multi-Routine" if any(s.get("type") == "subroutine" for s in data.get("steps", [])) else "Custom Agent"),
                 steps=[WorkflowStep(**s) for s in data.get("steps", [])],
             )
             workflow = sanitize_workflow_urls(workflow, prompt)
@@ -446,3 +461,39 @@ async def save_workflow(workflow: WorkflowDefinition):
         user_workflows.insert(0, workflow)
     _save_user_workflows(user_workflows)
     return {"message": "Workflow saved", "workflow": workflow.model_dump(mode="json")}
+
+
+@router.delete("/workflows/{workflow_id}")
+async def delete_workflow(workflow_id: str):
+    """Delete a saved custom workflow definition."""
+    user_workflows = _load_user_workflows()
+    filtered = [w for w in user_workflows if w.id != workflow_id]
+    _save_user_workflows(filtered)
+    return {"message": "Workflow deleted", "workflow_id": workflow_id}
+
+
+@router.get("/workflows/history/executions")
+async def get_workflow_executions(workflow_id: str | None = None, limit: int = 20):
+    """Load workflow execution history from SQLite database."""
+    from storage.db import load_workflow_executions
+    executions = load_workflow_executions(workflow_id=workflow_id, limit=limit)
+    return {"total": len(executions), "items": executions}
+
+
+@router.get("/workflows/history/screenshots")
+async def get_workflow_screenshots(workflow_id: str | None = None, limit: int = 50):
+    """Load captured workflow screenshots from SQLite database."""
+    from storage.db import load_workflow_screenshots
+    screenshots = load_workflow_screenshots(workflow_id=workflow_id, limit=limit)
+    return {"total": len(screenshots), "items": screenshots}
+
+
+@router.get("/workflows/{workflow_id}")
+async def get_workflow(workflow_id: str):
+    """Get a specific workflow definition by ID."""
+    all_workflows = DEFAULT_TEMPLATES + _load_user_workflows()
+    for w in all_workflows:
+        if w.id == workflow_id:
+            return {"status": "success", "workflow": w.model_dump(mode="json")}
+    return {"status": "error", "message": "Workflow not found"}
+

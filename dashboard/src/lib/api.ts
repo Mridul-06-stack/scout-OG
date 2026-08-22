@@ -231,3 +231,20 @@ export async function saveWorkflow(workflow: import("./types").WorkflowDefinitio
   });
   return res.json();
 }
+
+export async function deleteWorkflow(workflowId: string): Promise<any> {
+  const res = await fetch(`${BASE_URL}/api/workflows/${workflowId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error("Failed to delete workflow");
+  return res.json();
+}
+
+export async function getWorkflow(workflowId: string): Promise<{ status: string; workflow: import("./types").WorkflowDefinition }> {
+  const res = await fetch(`${BASE_URL}/api/workflows/${workflowId}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Failed to fetch workflow");
+  return res.json();
+}
+

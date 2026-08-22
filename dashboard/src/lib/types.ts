@@ -146,7 +146,7 @@ export interface VerticalInfo {
 
 export interface WorkflowStep {
   id: string;
-  type: "navigate" | "scroll" | "ai_filter" | "extract_text" | "screenshot" | "click" | "fill" | "export";
+  type: "navigate" | "scroll" | "ai_filter" | "extract_text" | "screenshot" | "click" | "fill" | "subroutine" | "export";
   title: string;
   description: string;
   params: Record<string, any>;
@@ -158,6 +158,7 @@ export interface WorkflowDefinition {
   name: string;
   description: string;
   category: string;
+  tags?: string[];
   steps: WorkflowStep[];
   created_at?: string;
 }
