@@ -1,0 +1,15 @@
+{
+  "vertical_interests": [
+    "government_tender_rfp_vertical"
+  ],
+  "include_tags": [
+    "tender",
+    "procurement"
+  ],
+  "exclude_tags": [
+    "spam",
+    "unverified"
+  ],
+  "attributes": {},
+  "constraints": {}
+}

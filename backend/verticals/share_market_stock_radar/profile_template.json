@@ -1,0 +1,15 @@
+{
+  "vertical_interests": [
+    "share_market_stock_radar"
+  ],
+  "include_tags": [
+    "breakout stocks",
+    "earnings dates"
+  ],
+  "exclude_tags": [
+    "spam",
+    "unverified"
+  ],
+  "attributes": {},
+  "constraints": {}
+}

@@ -1,0 +1,36 @@
+{
+  "name": "Crypto Airdrop and Protocol Radar",
+  "description": "Monitor upcoming token airdrops, testnet incentive programs, and governance votes.",
+  "icon": "TrendingUp",
+  "schema_ref": "crypto_airdrop_and_protocol_radar_schema.json",
+  "categories": [
+    "airdrop",
+    "testnet",
+    "token_launch"
+  ],
+  "keywords": [
+    "airdrop",
+    "token",
+    "governance"
+  ],
+  "field_mappings": {
+    "title": [
+      "title",
+      "name",
+      "headline",
+      "ticker",
+      "symbol"
+    ],
+    "description": [
+      "description",
+      "summary",
+      "details",
+      "analysis"
+    ],
+    "url": [
+      "url",
+      "link",
+      "source_url"
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+[
+  {
+    "url": "https://finance.yahoo.com/most-active",
+    "name": "Yahoo Finance Most Active",
+    "categories": [
+      "breakout_stock"
+    ],
+    "strategy": "explore"
+  },
+  {
+    "url": "https://www.moneycontrol.com",
+    "name": "Moneycontrol",
+    "categories": [
+      "earnings",
+      "valuation"
+    ],
+    "strategy": "explore"
+  }
+]

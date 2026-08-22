@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Google Summer of Code",
+    "url": "https://summerofcode.withgoogle.com/",
+    "categories": ["open_source"]
+  },
+  {
+    "name": "MLH Hackathons",
+    "url": "https://mlh.io/seasons/2025/events",
+    "categories": ["hackathon"]
+  },
+  {
+    "name": "Devfolio Hackathons",
+    "url": "https://devfolio.co/hackathons",
+    "categories": ["hackathon"]
+  },
+  {
+    "name": "Unstop Opportunities",
+    "url": "https://unstop.com/hackathons",
+    "categories": ["hackathon", "internship"]
+  },
+  {
+    "name": "LFX Mentorship",
+    "url": "https://mentorship.lfx.linuxfoundation.org/",
+    "categories": ["open_source"]
+  },
+  {
+    "name": "Outreachy",
+    "url": "https://www.outreachy.org/",
+    "categories": ["open_source", "internship"]
+  },
+  {
+    "name": "MITACS Globalink",
+    "url": "https://www.mitacs.ca/globalink/",
+    "categories": ["internship"]
+  },
+  {
+    "name": "Smart India Hackathon",
+    "url": "https://sih.gov.in/",
+    "categories": ["hackathon"]
+  }
+]

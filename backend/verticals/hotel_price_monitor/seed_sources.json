@@ -1,0 +1,22 @@
+[
+  {
+    "name": "MakeMyTrip Manali Hotels",
+    "url": "https://www.makemytrip.com/hotels/manali",
+    "categories": ["hotel", "resort"]
+  },
+  {
+    "name": "Booking.com Manali",
+    "url": "https://www.booking.com/searchresults/manali",
+    "categories": ["hotel", "hostel"]
+  },
+  {
+    "name": "Zostel Hostels Manali",
+    "url": "https://www.zostel.com/zostel/manali/",
+    "categories": ["hostel"]
+  },
+  {
+    "name": "Goibibo Manali Hotels",
+    "url": "https://www.goibibo.com/hotels/manali",
+    "categories": ["hotel", "resort"]
+  }
+]

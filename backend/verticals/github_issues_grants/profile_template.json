@@ -1,0 +1,10 @@
+{
+  "vertical_interests": ["github_issues_grants"],
+  "attributes": {
+    "languages": ["Rust", "Python", "TypeScript", "C++"],
+    "experience": "intermediate"
+  },
+  "include_tags": ["Rust", "good_first_issue", "E-easy", "bounty", "grant", "Python", "help_wanted"],
+  "exclude_tags": ["wontfix", "invalid", "duplicate"],
+  "constraints": {}
+}

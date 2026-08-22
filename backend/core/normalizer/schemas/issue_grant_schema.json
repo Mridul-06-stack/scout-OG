@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IssueGrant",
+  "type": "object",
+  "required": [
+    "title"
+  ],
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "good_first_issue",
+        "grant",
+        "bounty",
+        "rfp",
+        "bug_bounty"
+      ]
+    },
+    "repository": {
+      "type": "string"
+    },
+    "organization": {
+      "type": "string"
+    },
+    "reward_amount": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "description": {
+      "type": "string"
+    }
+  }
+}

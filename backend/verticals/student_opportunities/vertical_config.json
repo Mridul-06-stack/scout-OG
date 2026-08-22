@@ -1,0 +1,9 @@
+{
+  "vertical": "student_opportunities",
+  "display_name": "Student Opportunities",
+  "description": "Hackathons, internships, open-source programs, scholarships, fellowships, and grants",
+  "icon": "🎓",
+  "categories": ["hackathon", "internship", "open_source", "scholarship", "fellowship", "grant"],
+  "schema_ref": "opportunity_schema.json",
+  "default_interval": "6h"
+}

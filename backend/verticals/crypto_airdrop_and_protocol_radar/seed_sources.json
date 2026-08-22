@@ -1,0 +1,19 @@
+[
+  {
+    "url": "https://airdropalert.com",
+    "name": "Airdrop Alert",
+    "categories": [
+      "airdrop"
+    ],
+    "strategy": "explore"
+  },
+  {
+    "url": "https://defillama.com/airdrops",
+    "name": "DeFi Llama Airdrops",
+    "categories": [
+      "airdrop",
+      "testnet"
+    ],
+    "strategy": "explore"
+  }
+]

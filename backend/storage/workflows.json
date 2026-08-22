@@ -1,0 +1,73 @@
+[
+  {
+    "id": "wf-05020a45",
+    "name": "Trending GitHub Repos Explorer",
+    "description": "Navigates to GitHub trending repositories and extracts the README of the top repository.",
+    "category": "Content & Media",
+    "steps": [
+      {
+        "id": "step-1",
+        "type": "navigate",
+        "title": "Navigate to GitHub Trending",
+        "description": "Access the trending repositories page on GitHub.",
+        "params": {
+          "url": "https://github.com/trending"
+        },
+        "icon": "Globe"
+      },
+      {
+        "id": "step-2",
+        "type": "scroll",
+        "title": "Scroll to Load Repositories",
+        "description": "Scroll down to ensure all trending repositories are loaded.",
+        "params": {
+          "scroll_times": 2,
+          "delay_ms": 1000
+        },
+        "icon": "ArrowDownCircle"
+      },
+      {
+        "id": "step-3",
+        "type": "click",
+        "title": "Click on Top Repository",
+        "description": "Select the top trending repository to view its details.",
+        "params": {
+          "selector": "h1.h3 a"
+        },
+        "icon": "MousePointer"
+      },
+      {
+        "id": "step-4",
+        "type": "extract_text",
+        "title": "Extract README Content",
+        "description": "Retrieve the README content of the selected repository.",
+        "params": {
+          "target": "readme",
+          "label": "Top Repository README"
+        },
+        "icon": "FileText"
+      },
+      {
+        "id": "step-5",
+        "type": "export",
+        "title": "Export README Data",
+        "description": "Export the extracted README content for review.",
+        "params": {
+          "notify": true
+        },
+        "icon": "Save"
+      },
+      {
+        "id": "step-1787402907515",
+        "type": "screenshot",
+        "title": "6. Capture Snapshot",
+        "description": "Execute Capture Snapshot action",
+        "params": {
+          "label": "page_snapshot"
+        },
+        "icon": "Zap"
+      }
+    ],
+    "created_at": "2026-08-22T12:48:36.384000Z"
+  }
+]
