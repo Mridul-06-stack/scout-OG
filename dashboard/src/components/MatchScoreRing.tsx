@@ -10,19 +10,19 @@ export default function MatchScoreRing({ score, size = "md" }: MatchScoreRingPro
 
   // Gradient ID and color palette based on match tier
   let gradientId = "emeraldGrad";
-  let textColor = "text-emerald-400";
-  let glowColor = "shadow-emerald-500/30";
+  let textColor = "text-emerald-700";
+  let glowColor = "shadow-emerald-500/10";
   let badgeLabel = "High Fit";
 
   if (percentage < 45) {
     gradientId = "slateGrad";
-    textColor = "text-slate-400";
-    glowColor = "shadow-slate-500/20";
+    textColor = "text-slate-600";
+    glowColor = "shadow-slate-500/10";
     badgeLabel = "Base";
   } else if (percentage < 70) {
     gradientId = "indigoGrad";
-    textColor = "text-indigo-400";
-    glowColor = "shadow-indigo-500/30";
+    textColor = "text-indigo-700";
+    glowColor = "shadow-indigo-500/10";
     badgeLabel = "Good";
   }
 
@@ -37,7 +37,7 @@ export default function MatchScoreRing({ score, size = "md" }: MatchScoreRingPro
 
   return (
     <div
-      className={`relative inline-flex items-center justify-center rounded-full shadow-lg ${glowColor} transition-transform hover:scale-110 duration-200`}
+      className={`relative inline-flex items-center justify-center rounded-full shadow-md ${glowColor} transition-transform hover:scale-110 duration-200 bg-white`}
       title={`Relevance Fit: ${percentage}% (${badgeLabel})`}
     >
       <svg
@@ -64,7 +64,7 @@ export default function MatchScoreRing({ score, size = "md" }: MatchScoreRingPro
           cx={dimensions.width / 2}
           cy={dimensions.width / 2}
           r={dimensions.radius}
-          stroke="rgba(255, 255, 255, 0.08)"
+          stroke="#e2e8f0"
           strokeWidth={dimensions.stroke}
           fill="transparent"
         />

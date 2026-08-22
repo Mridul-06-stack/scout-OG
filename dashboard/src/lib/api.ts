@@ -9,7 +9,7 @@ import {
   OpportunityStatus,
 } from "./types";
 
-const BASE_URL = ""; // Relative path uses Next.js rewrites to proxy to http://localhost:8000
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 export async function fetchOpportunities(params?: {
   vertical?: string;

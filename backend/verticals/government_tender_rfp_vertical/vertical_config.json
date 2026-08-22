@@ -1,0 +1,37 @@
+{
+  "name": "Government Tender & RFP Radar",
+  "description": "Discover public sector procurement tenders, state contracts, and engineering bids",
+  "icon": "TrendingUp",
+  "schema_ref": "government_tender_rfp_vertical_schema.json",
+  "categories": [
+    "tender",
+    "procurement",
+    "rfp",
+    "government_contract"
+  ],
+  "keywords": [
+    "tender",
+    "procurement",
+    "RFP"
+  ],
+  "field_mappings": {
+    "title": [
+      "title",
+      "name",
+      "headline",
+      "ticker",
+      "symbol"
+    ],
+    "description": [
+      "description",
+      "summary",
+      "details",
+      "analysis"
+    ],
+    "url": [
+      "url",
+      "link",
+      "source_url"
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+[
+  {
+    "url": "https://etenders.gov.in",
+    "name": "eTenders India",
+    "categories": [
+      "tender",
+      "procurement"
+    ],
+    "strategy": "explore"
+  },
+  {
+    "url": "https://gem.gov.in",
+    "name": "Government eMarketplace",
+    "categories": [
+      "tender",
+      "procurement"
+    ],
+    "strategy": "explore"
+  }
+]

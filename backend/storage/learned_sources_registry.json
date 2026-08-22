@@ -278,5 +278,33 @@
     "last_run_status": "success",
     "consecutive_failures": 0,
     "requires_approval_for": []
+  },
+  "etenders.gov.in": {
+    "id": "b222571b-a50f-4e1f-b98b-d3906520bb32",
+    "source_domain": "etenders.gov.in",
+    "source_url": "https://etenders.gov.in",
+    "vertical": "government_tender_rfp_vertical",
+    "learned_at": "2026-08-22T00:47:20.356186",
+    "strategy": "public_dom",
+    "extraction_schema_ref": "opportunity_schema.json",
+    "compiled_command_ref": "webcmd_explore_etenders_gov_in",
+    "last_run_at": "2026-08-22T00:47:23.892417",
+    "last_run_status": "success",
+    "consecutive_failures": 0,
+    "requires_approval_for": []
+  },
+  "gem.gov.in": {
+    "id": "70a758ab-055d-4891-bd68-ac6372960e92",
+    "source_domain": "gem.gov.in",
+    "source_url": "https://gem.gov.in",
+    "vertical": "government_tender_rfp_vertical",
+    "learned_at": "2026-08-22T00:47:29.817298",
+    "strategy": "public_dom",
+    "extraction_schema_ref": "opportunity_schema.json",
+    "compiled_command_ref": "webcmd_explore_gem_gov_in",
+    "last_run_at": "2026-08-22T00:47:33.542444",
+    "last_run_status": "success",
+    "consecutive_failures": 0,
+    "requires_approval_for": []
   }
 }

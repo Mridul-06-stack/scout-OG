@@ -88,20 +88,20 @@ export default function OpportunitiesPage() {
   return (
     <div className="p-6 sm:p-10 space-y-6 max-w-7xl mx-auto w-full">
       {/* ── Top Bento Header ── */}
-      <div className="bento-card p-6 sm:p-8 border border-white/[0.09] bg-gradient-to-r from-[#111326] via-[#141834] to-[#1a1236] flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden shadow-2xl">
+      <div className="bento-card p-6 sm:p-8 border border-slate-200/90 bg-gradient-to-r from-white via-indigo-50/50 to-purple-50/50 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden shadow-sm">
         <div className="space-y-1.5 z-10">
           <div className="flex items-center gap-2">
-            <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+            <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-indigo-100 text-indigo-800 border border-indigo-200 font-mono">
               Explorer & Pipeline
             </span>
-            <span className="text-xs text-slate-400 font-medium">
+            <span className="text-xs text-slate-500 font-medium">
               {opportunities.length} Listings Active
             </span>
           </div>
-          <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-white">
+          <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-slate-900 font-display">
             Opportunity Explorer
           </h2>
-          <p className="text-xs sm:text-sm text-slate-300 font-medium">
+          <p className="text-xs sm:text-sm text-slate-600 font-medium">
             Normalized across real webcmd workflows · Ranked by personal fit score
           </p>
         </div>
@@ -109,7 +109,7 @@ export default function OpportunitiesPage() {
         {/* Top Controls: Verticals & View Switcher */}
         <div className="flex flex-wrap items-center gap-3 z-10">
           {/* Dynamic Vertical Toggle Pills */}
-          <div className="bg-[#0b0d1a]/90 p-1 rounded-2xl border border-white/[0.08] flex flex-wrap items-center gap-1 shadow-inner">
+          <div className="bg-slate-100/90 p-1 rounded-2xl border border-slate-200 flex flex-wrap items-center gap-1 shadow-inner">
             {verticals.length > 0 ? (
               verticals.map((v) => {
                 const isActive = vertical === v.id;
@@ -117,10 +117,10 @@ export default function OpportunitiesPage() {
                   <button
                     key={v.id}
                     onClick={() => setVertical(v.id)}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
+                    className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
                       isActive
-                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
-                        : "text-slate-400 hover:text-slate-200"
+                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                        : "text-slate-600 hover:text-slate-900 hover:bg-white/80"
                     }`}
                   >
                     {renderVerticalIcon(v.id)}
@@ -132,10 +132,10 @@ export default function OpportunitiesPage() {
               <>
                 <button
                   onClick={() => setVertical("student_opportunities")}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
+                  className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
                     vertical === "student_opportunities"
-                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
-                      : "text-slate-400 hover:text-slate-200"
+                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-white/80"
                   }`}
                 >
                   <GraduationCap className="w-3.5 h-3.5" />
@@ -143,10 +143,10 @@ export default function OpportunitiesPage() {
                 </button>
                 <button
                   onClick={() => setVertical("hotel_price_monitor")}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
+                  className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
                     vertical === "hotel_price_monitor"
-                      ? "bg-amber-600 text-white shadow-lg shadow-amber-600/30"
-                      : "text-slate-400 hover:text-slate-200"
+                      ? "bg-amber-600 text-white shadow-md shadow-amber-600/20"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-white/80"
                   }`}
                 >
                   <Hotel className="w-3.5 h-3.5" />
@@ -154,10 +154,10 @@ export default function OpportunitiesPage() {
                 </button>
                 <button
                   onClick={() => setVertical("github_issues_grants")}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
+                  className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
                     vertical === "github_issues_grants"
-                      ? "bg-purple-600 text-white shadow-lg shadow-purple-600/30"
-                      : "text-slate-400 hover:text-slate-200"
+                      ? "bg-purple-600 text-white shadow-md shadow-purple-600/20"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-white/80"
                   }`}
                 >
                   <GitBranch className="w-3.5 h-3.5" />
@@ -168,7 +168,7 @@ export default function OpportunitiesPage() {
 
             <button
               onClick={() => setIsCreateModalOpen(true)}
-              className="px-3 py-1.5 rounded-xl text-xs font-bold text-pink-300 hover:text-white hover:bg-pink-500/20 border border-dashed border-pink-500/30 transition-all flex items-center gap-1"
+              className="px-3 py-1.5 rounded-xl text-xs font-bold text-indigo-700 hover:text-indigo-900 hover:bg-indigo-50 border border-dashed border-indigo-300 transition-all flex items-center gap-1 cursor-pointer"
             >
               <Plus className="w-3 h-3" />
               <span>New</span>
@@ -176,13 +176,13 @@ export default function OpportunitiesPage() {
           </div>
 
           {/* View Mode Switcher Pills */}
-          <div className="bg-[#0b0d1a]/90 p-1 rounded-2xl border border-white/[0.08] flex items-center gap-1 shadow-inner">
+          <div className="bg-slate-100/90 p-1 rounded-2xl border border-slate-200 flex items-center gap-1 shadow-inner">
             <button
               onClick={() => setViewMode("list")}
-              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 viewMode === "list"
-                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
-                  : "text-slate-400 hover:text-slate-200"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white/80"
               }`}
               title="Feed View"
             >
@@ -191,10 +191,10 @@ export default function OpportunitiesPage() {
             </button>
             <button
               onClick={() => setViewMode("board")}
-              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 viewMode === "board"
-                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
-                  : "text-slate-400 hover:text-slate-200"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white/80"
               }`}
               title="Kanban Board View"
             >
@@ -206,7 +206,7 @@ export default function OpportunitiesPage() {
       </div>
 
       {/* ── Search & Filter Bar Bento ── */}
-      <div className="bento-card p-4 border border-white/[0.08] flex flex-wrap items-center justify-between gap-4">
+      <div className="bento-card p-4 border border-slate-200 bg-white/90 shadow-sm flex flex-wrap items-center justify-between gap-4">
         <form onSubmit={handleSearchSubmit} className="flex-1 min-w-[260px] relative">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
@@ -214,7 +214,7 @@ export default function OpportunitiesPage() {
             placeholder="Search by title, location, skill, or organization..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-[#121526] border border-white/[0.08] focus:border-indigo-500 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 outline-none transition-all shadow-inner font-sans"
+            className="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white rounded-2xl pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 outline-none transition-all shadow-inner font-sans font-medium"
           />
         </form>
 
@@ -223,7 +223,7 @@ export default function OpportunitiesPage() {
           <select
             value={selectedChangeType}
             onChange={(e) => setSelectedChangeType(e.target.value)}
-            className="bg-[#121526] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-slate-200 outline-none focus:border-indigo-500 font-bold shadow-inner"
+            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 outline-none focus:border-indigo-500 font-bold shadow-sm"
           >
             <option value="">All Change Types</option>
             <option value="new">✨ New Today</option>
@@ -236,7 +236,7 @@ export default function OpportunitiesPage() {
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="bg-[#121526] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-slate-200 outline-none focus:border-indigo-500 font-bold shadow-inner"
+            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 outline-none focus:border-indigo-500 font-bold shadow-sm"
           >
             <option value="">All Stages</option>
             <option value="discovered">Discovered</option>
@@ -248,10 +248,10 @@ export default function OpportunitiesPage() {
 
           <button
             onClick={loadOpportunities}
-            className="p-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white border border-white/[0.08] transition-colors"
+            className="p-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 border border-slate-200 transition-colors shadow-sm cursor-pointer"
             title="Refresh list"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-indigo-400" : ""}`} />
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-indigo-600" : ""}`} />
           </button>
         </div>
       </div>
@@ -265,10 +265,10 @@ export default function OpportunitiesPage() {
       ) : (
         <div className="space-y-4">
           {opportunities.length === 0 ? (
-            <div className="bento-card p-14 text-center border border-white/[0.08] space-y-3">
-              <Sparkles className="w-12 h-12 text-slate-500 mx-auto" />
-              <p className="text-base font-bold text-white">No Matching Listings</p>
-              <p className="text-xs text-slate-400 max-w-sm mx-auto font-medium">
+            <div className="bento-card p-14 text-center border border-slate-200 bg-white/90 shadow-sm space-y-3">
+              <Sparkles className="w-12 h-12 text-slate-400 mx-auto" />
+              <p className="text-base font-bold text-slate-900 font-display">No Matching Listings</p>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto font-medium">
                 Try adjusting your search query, change type filter, or select another vertical.
               </p>
             </div>

@@ -36,26 +36,26 @@ export default function OpportunityCard({
       case "new":
         return {
           label: "✨ New Today",
-          color: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-          barColor: "bg-emerald-500 shadow-emerald-500/50",
+          color: "bg-emerald-50 text-emerald-800 border-emerald-200",
+          barColor: "bg-emerald-500",
         };
       case "closing_soon":
         return {
           label: "⏰ Closing Soon",
-          color: "bg-rose-500/15 text-rose-300 border-rose-500/30",
-          barColor: "bg-rose-500 shadow-rose-500/50",
+          color: "bg-rose-50 text-rose-800 border-rose-200",
+          barColor: "bg-rose-500",
         };
       case "updated":
         return {
           label: "🔄 Updated",
-          color: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-          barColor: "bg-amber-500 shadow-amber-500/50",
+          color: "bg-amber-50 text-amber-800 border-amber-200",
+          barColor: "bg-amber-500",
         };
       default:
         return {
           label: "✓ Active",
-          color: "bg-slate-500/10 text-slate-400 border-slate-500/20",
-          barColor: "bg-indigo-500/50",
+          color: "bg-slate-100 text-slate-700 border-slate-200",
+          barColor: "bg-indigo-500",
         };
     }
   };
@@ -73,9 +73,9 @@ export default function OpportunityCard({
   const domain = getDomain(opportunity.source_url);
 
   return (
-    <div className="bento-card p-5 sm:p-6 group relative overflow-hidden transition-all duration-300 hover:border-indigo-500/40">
+    <div className="bento-card p-5 sm:p-6 group relative overflow-hidden transition-all duration-300 bg-white/95 border border-slate-200/90 shadow-sm hover:border-indigo-400">
       {/* Left Vertical Status Bar Accent */}
-      <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${badge.barColor} shadow-md`} />
+      <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${badge.barColor}`} />
 
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 pl-2">
         {/* Main Content Area */}
@@ -87,12 +87,12 @@ export default function OpportunityCard({
             </span>
 
             {opportunity.type && (
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-white/[0.04] text-slate-300 border border-white/[0.08] font-mono">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-200 font-mono">
                 {opportunity.type}
               </span>
             )}
 
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-slate-400 bg-white/[0.02] border border-white/[0.05] flex items-center gap-1 font-mono">
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200 flex items-center gap-1 font-mono">
               <Globe2 className="w-3 h-3 text-slate-400" />
               {domain}
             </span>
@@ -100,11 +100,11 @@ export default function OpportunityCard({
 
           {/* Title & Description */}
           <div className="space-y-1">
-            <h4 className="text-base sm:text-lg font-black text-white group-hover:text-indigo-200 transition-colors leading-snug font-display line-clamp-2">
+            <h4 className="text-base sm:text-lg font-black text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug font-display line-clamp-2">
               {opportunity.title}
             </h4>
             {opportunity.raw_fields?.description && (
-              <p className="text-xs text-slate-400 line-clamp-2 font-medium leading-relaxed">
+              <p className="text-xs text-slate-600 line-clamp-2 font-medium leading-relaxed">
                 {opportunity.raw_fields.description}
               </p>
             )}
@@ -115,22 +115,22 @@ export default function OpportunityCard({
             {opportunity.tags?.slice(0, 5).map((tag, idx) => (
               <span
                 key={idx}
-                className="px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 font-mono"
+                className="px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 font-mono"
               >
                 #{tag}
               </span>
             ))}
 
             {opportunity.location && (
-              <span className="px-2 py-0.5 rounded-lg text-[10px] font-medium text-slate-400 flex items-center gap-1">
+              <span className="px-2 py-0.5 rounded-lg text-[10px] font-medium text-slate-500 flex items-center gap-1">
                 <MapPin className="w-3 h-3 text-slate-400" />
                 {opportunity.location}
               </span>
             )}
 
             {opportunity.deadline && (
-              <span className="px-2 py-0.5 rounded-lg text-[10px] font-medium text-rose-300 flex items-center gap-1 font-mono">
-                <Calendar className="w-3 h-3 text-rose-400" />
+              <span className="px-2 py-0.5 rounded-lg text-[10px] font-medium text-rose-700 bg-rose-50 border border-rose-200 flex items-center gap-1 font-mono">
+                <Calendar className="w-3 h-3 text-rose-500" />
                 {new Date(opportunity.deadline).toLocaleDateString()}
               </span>
             )}
@@ -138,14 +138,14 @@ export default function OpportunityCard({
         </div>
 
         {/* Right Section: Match Score Ring & Action Buttons */}
-        <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-4 w-full sm:w-auto shrink-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-white/[0.06]">
+        <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-4 w-full sm:w-auto shrink-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100">
           {/* Match Score Ring */}
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
-              <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block font-mono">
+              <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider block font-mono">
                 Fit Score
               </span>
-              <span className="text-xs font-bold text-indigo-300">
+              <span className="text-xs font-bold text-indigo-700">
                 {opportunity.match_score >= 0.7 ? "High Match" : opportunity.match_score >= 0.4 ? "Good Fit" : "Base Fit"}
               </span>
             </div>
@@ -158,7 +158,7 @@ export default function OpportunityCard({
               href={opportunity.source_url}
               target="_blank"
               rel="noreferrer"
-              className="p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.09] text-slate-300 hover:text-white border border-white/[0.08] transition-all hover:scale-105"
+              className="p-2 rounded-xl bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 border border-slate-200 transition-all hover:scale-105 shadow-sm cursor-pointer"
               title="Open Source Link"
             >
               <ExternalLink className="w-4 h-4" />
@@ -166,7 +166,7 @@ export default function OpportunityCard({
 
             <button
               onClick={() => setExpanded(!expanded)}
-              className="p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.09] text-slate-300 hover:text-white border border-white/[0.08] transition-all"
+              className="p-2 rounded-xl bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 border border-slate-200 transition-all shadow-sm cursor-pointer"
               title="Toggle Live Telemetry"
             >
               {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -177,35 +177,35 @@ export default function OpportunityCard({
 
       {/* Expandable Live Telemetry & Raw Fields Drawer */}
       {expanded && (
-        <div className="mt-5 pt-4 border-t border-white/[0.08] space-y-3 animate-in fade-in duration-200">
+        <div className="mt-5 pt-4 border-t border-slate-200 space-y-3 animate-in fade-in duration-200">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-black uppercase tracking-wider text-indigo-300 font-mono flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5 text-indigo-400" />
+            <span className="text-[11px] font-black uppercase tracking-wider text-indigo-800 font-mono flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-indigo-600" />
               Live Extracted Record & Schema
             </span>
-            <span className="text-[10px] text-slate-400 font-mono">
+            <span className="text-[10px] text-slate-500 font-mono">
               ID: {opportunity.id.slice(0, 8)}...
             </span>
           </div>
 
-          <pre className="p-4 rounded-2xl bg-[#070914] border border-white/[0.06] text-[11px] font-mono text-emerald-300/90 overflow-x-auto max-h-48 shadow-inner">
+          <pre className="p-4 rounded-2xl bg-slate-900 border border-slate-800 text-[11px] font-mono text-emerald-400 overflow-x-auto max-h-48 shadow-inner">
             {JSON.stringify(opportunity.raw_fields, null, 2)}
           </pre>
 
           {/* Stage Quick Advancement Pills */}
           {onStatusChange && (
             <div className="flex flex-wrap items-center gap-1.5 pt-2">
-              <span className="text-[10px] font-black uppercase text-slate-400 font-mono mr-1">
+              <span className="text-[10px] font-black uppercase text-slate-500 font-mono mr-1">
                 Move Stage:
               </span>
               {(["discovered", "interested", "applying", "applied", "selected"] as OpportunityStatus[]).map((st) => (
                 <button
                   key={st}
                   onClick={() => onStatusChange(opportunity.id, st)}
-                  className={`px-3 py-1 rounded-xl text-[10px] font-bold uppercase transition-all ${
+                  className={`px-3 py-1 rounded-xl text-[10px] font-bold uppercase transition-all cursor-pointer ${
                     opportunity.status === st
                       ? "bg-indigo-600 text-white shadow-sm"
-                      : "bg-white/[0.03] text-slate-400 hover:text-white hover:bg-white/[0.08] border border-white/[0.05]"
+                      : "bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200 border border-slate-200"
                   }`}
                 >
                   {st}

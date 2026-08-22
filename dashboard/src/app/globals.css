@@ -1,14 +1,13 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #030712;
-  --foreground: #f8fafc;
-  --card-bg: rgba(13, 17, 33, 0.75);
-  --card-border: rgba(255, 255, 255, 0.08);
-  --card-hover-border: rgba(99, 102, 241, 0.35);
-  --primary-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
-  --radar-gradient: linear-gradient(135deg, #06b6d4 0%, #3b82f6 50%, #6366f1 100%);
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card-bg: rgba(255, 255, 255, 0.88);
+  --card-border: rgba(226, 232, 240, 0.9);
+  --card-hover-border: rgba(99, 102, 241, 0.5);
+  --primary-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+  --radar-gradient: linear-gradient(135deg, #0284c7 0%, #4f46e5 50%, #9333ea 100%);
 }
 
 * {
@@ -16,30 +15,27 @@
 }
 
 body {
-  background-color: var(--background);
-  color: var(--foreground);
+  background-color: #f8fafc;
+  color: #0f172a;
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   overflow-x: hidden;
   background-image: 
-    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.12) 0px, transparent 50%),
-    radial-gradient(at 50% 50%, rgba(6, 182, 212, 0.06) 0px, transparent 60%),
-    radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.1) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, rgba(16, 185, 129, 0.08) 0px, transparent 50%);
+    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.07) 0px, transparent 50%),
+    radial-gradient(at 50% 50%, rgba(14, 165, 233, 0.05) 0px, transparent 60%),
+    radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.06) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(16, 185, 129, 0.06) 0px, transparent 50%);
   background-attachment: fixed;
 }
 
-/* High-tech Fine Radar Grid Pattern */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
+/* Light High-Tech Blueprint Grid */
+.game-blueprint-grid {
+  background-color: #ffffff;
   background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-  background-size: 40px 40px;
-  pointer-events: none;
-  z-index: 0;
+    radial-gradient(#cbd5e1 1.2px, transparent 1.2px),
+    linear-gradient(to right, rgba(226, 232, 240, 0.6) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(226, 232, 240, 0.6) 1px, transparent 1px);
+  background-size: 24px 24px, 72px 72px, 72px 72px;
 }
 
 /* Headings */
@@ -53,15 +49,16 @@ code, pre, .font-mono {
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* Bento Card Style */
+/* Bento Card Style - Light Frosted Glass */
 .bento-card {
   background: var(--card-bg);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--card-border);
   box-shadow: 
-    0 20px 40px -15px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.09);
+    0 10px 30px -10px rgba(0, 0, 0, 0.06),
+    0 1px 3px 0 rgba(0, 0, 0, 0.02),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.9);
   border-radius: 1.5rem;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
@@ -70,9 +67,9 @@ code, pre, .font-mono {
 .bento-card:hover {
   border-color: var(--card-hover-border);
   box-shadow: 
-    0 24px 50px -12px rgba(99, 102, 241, 0.15),
-    0 0 20px 0 rgba(99, 102, 241, 0.08),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+    0 20px 40px -12px rgba(99, 102, 241, 0.12),
+    0 0 15px 0 rgba(99, 102, 241, 0.06),
+    inset 0 1px 0 0 rgba(255, 255, 255, 1);
 }
 
 .bento-card-interactive {
@@ -83,86 +80,83 @@ code, pre, .font-mono {
   transform: translateY(-3px);
 }
 
-/* Glow Elements */
+/* Game Node Cards */
+.game-node-card {
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1.5px solid #e2e8f0;
+  box-shadow: 
+    0 12px 28px -8px rgba(15, 23, 42, 0.08),
+    0 2px 6px -1px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 0 #ffffff;
+  border-radius: 1.25rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.game-node-card:hover {
+  border-color: #818cf8;
+  transform: translateY(-2px);
+  box-shadow: 
+    0 18px 36px -10px rgba(99, 102, 241, 0.18),
+    0 0 20px -2px rgba(99, 102, 241, 0.12),
+    inset 0 1px 0 0 #ffffff;
+}
+
+.game-node-card.active-executing {
+  border-color: #6366f1;
+  box-shadow: 
+    0 0 0 3px rgba(99, 102, 241, 0.25),
+    0 20px 40px -10px rgba(99, 102, 241, 0.3);
+}
+
+.game-node-card.active-success {
+  border-color: #10b981;
+  box-shadow: 
+    0 0 0 2px rgba(16, 185, 129, 0.2),
+    0 12px 28px -8px rgba(16, 185, 129, 0.15);
+}
+
+/* Flowing Dashed SVG Path Animation */
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+.animate-dash-flow {
+  animation: dash-flow 1.2s linear infinite;
+}
+
+/* Pulse Glows */
 .glow-indigo {
-  box-shadow: 0 0 25px -4px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 4px 20px -2px rgba(99, 102, 241, 0.3);
 }
 
 .glow-emerald {
-  box-shadow: 0 0 25px -4px rgba(16, 185, 129, 0.4);
-}
-
-.glow-rose {
-  box-shadow: 0 0 25px -4px rgba(244, 63, 94, 0.4);
+  box-shadow: 0 4px 20px -2px rgba(16, 185, 129, 0.3);
 }
 
 .glow-purple {
-  box-shadow: 0 0 25px -4px rgba(168, 85, 247, 0.4);
+  box-shadow: 0 4px 20px -2px rgba(168, 85, 247, 0.3);
 }
 
-/* Shimmer Button Effect */
-@keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
-.animate-shimmer {
-  position: relative;
-  overflow: hidden;
-}
-
-.animate-shimmer::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.15) 50%,
-    transparent 100%
-  );
-  animation: shimmer 3s infinite;
-}
-
-/* Radar Sweep Pulse */
-@keyframes radar-sweep {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.animate-radar-sweep {
-  animation: radar-sweep 8s linear infinite;
-  transform-origin: center center;
-}
-
-/* Pulse Glow */
-@keyframes pulse-glow {
-  0%, 100% { opacity: 0.4; transform: scale(1); }
-  50% { opacity: 0.8; transform: scale(1.05); }
-}
-
-.animate-pulse-glow {
-  animation: pulse-glow 3s ease-in-out infinite;
-}
-
-/* Custom Scrollbars */
+/* Custom Light Scrollbars */
 ::-webkit-scrollbar {
   width: 7px;
   height: 7px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #070914;
+  background: #f1f5f9;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.14);
+  background: #cbd5e1;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.28);
+  background: #94a3b8;
 }
+

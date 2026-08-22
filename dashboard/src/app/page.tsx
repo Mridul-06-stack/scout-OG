@@ -102,29 +102,29 @@ export default function OverviewPage() {
   return (
     <div className="p-6 sm:p-10 space-y-8 max-w-7xl mx-auto w-full">
       {/* ── Top Hero Bento Bar ── */}
-      <div className="bento-card p-6 sm:p-8 bg-gradient-to-r from-[#111328]/90 via-[#151834]/80 to-[#1e1438]/90 border border-white/[0.09] shadow-2xl relative overflow-hidden">
+      <div className="bento-card p-6 sm:p-8 bg-gradient-to-r from-white via-indigo-50/50 to-purple-50/50 border border-slate-200/90 shadow-sm relative overflow-hidden">
         {/* Ambient Gradient Mesh Spheres */}
-        <div className="absolute -right-10 -top-10 w-72 h-72 bg-gradient-to-bl from-indigo-500/20 via-purple-500/15 to-pink-500/0 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -right-10 -top-10 w-72 h-72 bg-gradient-to-bl from-indigo-500/10 via-purple-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
         <div className="absolute left-1/3 -bottom-10 w-60 h-60 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
           <div className="space-y-2 max-w-2xl">
             <div className="flex flex-wrap items-center gap-2.5">
-              <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-1.5 shadow-sm">
-                <Radio className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
+              <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-indigo-100 text-indigo-800 border border-indigo-200 flex items-center gap-1.5 shadow-sm font-mono">
+                <Radio className="w-3.5 h-3.5 text-indigo-600 animate-pulse" />
                 <span>Autonomous Radar Live</span>
               </span>
-              <span className="text-xs text-slate-400 font-medium flex items-center gap-1">
-                <Zap className="w-3.5 h-3.5 text-amber-400" />
+              <span className="text-xs text-slate-500 font-medium flex items-center gap-1 font-mono">
+                <Zap className="w-3.5 h-3.5 text-amber-500" />
                 <span>webcmd Explore-Once Architecture</span>
               </span>
             </div>
 
-            <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-white leading-tight">
+            <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-slate-900 leading-tight font-display">
               Opportunity & Workflow Radar
             </h2>
-            <p className="text-xs sm:text-sm text-slate-300 font-medium leading-relaxed">
-              Discovers, evaluates with OpenAI <code className="text-indigo-300 font-mono">gpt-4o-mini</code>, and executes browser actions with human approval.
+            <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed">
+              Discovers, evaluates with OpenAI <code className="text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-mono font-bold">gpt-4o-mini</code>, and executes browser actions with human approval.
             </p>
           </div>
 
@@ -133,18 +133,18 @@ export default function OverviewPage() {
             {/* Create Custom Radar Studio CTA */}
             <button
               onClick={() => setIsCreateModalOpen(true)}
-              className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-pink-600/30 via-purple-600/30 to-indigo-600/30 hover:from-pink-600/50 hover:to-indigo-600/50 text-white border border-pink-500/40 text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-pink-500/10 hover:scale-[1.02]"
+              className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-black transition-all flex items-center justify-center gap-2 shadow-md shadow-indigo-500/20 hover:scale-[1.02] cursor-pointer"
             >
-              <Sparkles className="w-4 h-4 text-pink-300" />
+              <Sparkles className="w-4 h-4 text-purple-200" />
               <span>+ Custom Radar</span>
             </button>
 
             {/* Teach Source Button */}
             <button
               onClick={() => setIsLearnModalOpen(true)}
-              className="px-4 py-2.5 rounded-2xl bg-white/[0.05] hover:bg-white/[0.09] text-slate-200 border border-white/10 text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm hover:scale-[1.02]"
+              className="px-4 py-2.5 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm hover:scale-[1.02] cursor-pointer"
             >
-              <Globe2 className="w-4 h-4 text-indigo-400" />
+              <Globe2 className="w-4 h-4 text-indigo-600" />
               <span>Teach Source</span>
             </button>
 
@@ -159,12 +159,12 @@ export default function OverviewPage() {
         </div>
 
         {/* Dynamic Vertical Switcher Pill Tabs */}
-        <div className="mt-6 pt-5 border-t border-white/[0.08] flex flex-wrap items-center gap-2">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-2">
+        <div className="mt-6 pt-5 border-t border-slate-200 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-2 font-mono">
             Active Radar:
           </span>
 
-          <div className="bg-[#0b0d1a]/80 p-1 rounded-2xl border border-white/[0.08] flex flex-wrap items-center gap-1.5 shadow-inner">
+          <div className="bg-slate-100/90 p-1 rounded-2xl border border-slate-200 flex flex-wrap items-center gap-1.5 shadow-inner">
             {verticals.length > 0 ? (
               verticals.map((v) => {
                 const isActive = vertical === v.id;
@@ -173,15 +173,17 @@ export default function OverviewPage() {
                   <button
                     key={v.id}
                     onClick={() => setVertical(v.id)}
-                    className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+                    className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
                       isActive
-                        ? "bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-500/30 scale-[1.02]"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]"
+                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20 scale-[1.02]"
+                        : "text-slate-600 hover:text-slate-900 hover:bg-white/80"
                     }`}
                   >
                     {renderVerticalIcon(v.id)}
                     <span>{v.name}</span>
-                    <span className="px-1.5 py-0.2 rounded-md text-[10px] bg-black/30 font-mono">
+                    <span className={`px-1.5 py-0.2 rounded-md text-[10px] font-mono ${
+                      isActive ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
+                    }`}>
                       {count}
                     </span>
                   </button>
@@ -192,10 +194,10 @@ export default function OverviewPage() {
               <>
                 <button
                   onClick={() => setVertical("student_opportunities")}
-                  className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+                  className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
                     vertical === "student_opportunities"
-                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30"
-                      : "text-slate-400 hover:text-slate-200"
+                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-white/80"
                   }`}
                 >
                   <GraduationCap className="w-4 h-4" />
@@ -203,10 +205,10 @@ export default function OverviewPage() {
                 </button>
                 <button
                   onClick={() => setVertical("hotel_price_monitor")}
-                  className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+                  className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
                     vertical === "hotel_price_monitor"
-                      ? "bg-amber-600 text-white shadow-lg shadow-amber-500/30"
-                      : "text-slate-400 hover:text-slate-200"
+                      ? "bg-amber-600 text-white shadow-md shadow-amber-500/20"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-white/80"
                   }`}
                 >
                   <Hotel className="w-4 h-4" />
@@ -214,10 +216,10 @@ export default function OverviewPage() {
                 </button>
                 <button
                   onClick={() => setVertical("github_issues_grants")}
-                  className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+                  className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
                     vertical === "github_issues_grants"
-                      ? "bg-purple-600 text-white shadow-lg shadow-purple-500/30"
-                      : "text-slate-400 hover:text-slate-200"
+                      ? "bg-purple-600 text-white shadow-md shadow-purple-500/20"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-white/80"
                   }`}
                 >
                   <GitBranch className="w-4 h-4" />
@@ -229,7 +231,7 @@ export default function OverviewPage() {
             {/* Quick Add Custom Vertical Pill */}
             <button
               onClick={() => setIsCreateModalOpen(true)}
-              className="px-3 py-1.5 rounded-xl text-xs font-bold text-pink-300 hover:text-white hover:bg-pink-500/20 border border-dashed border-pink-500/30 transition-all flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-xl text-xs font-bold text-indigo-700 hover:text-indigo-900 hover:bg-indigo-50 border border-dashed border-indigo-300 transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>New Workflow</span>
@@ -246,7 +248,7 @@ export default function OverviewPage() {
           subtitle="Opportunities stored across learned sources"
           icon={Compass}
           gradient="bg-indigo-500"
-          iconColor="text-indigo-400"
+          iconColor="text-indigo-600"
           trend="Multi-Source"
         />
         <StatsCard
@@ -255,7 +257,7 @@ export default function OverviewPage() {
           subtitle="New items extracted from latest scan"
           icon={Sparkles}
           gradient="bg-emerald-500"
-          iconColor="text-emerald-400"
+          iconColor="text-emerald-600"
           trend="New"
         />
         <StatsCard
@@ -264,7 +266,7 @@ export default function OverviewPage() {
           subtitle="Deadlines within 7 days"
           icon={Clock}
           gradient="bg-rose-500"
-          iconColor="text-rose-400"
+          iconColor="text-rose-600"
           trend="Urgent"
         />
         <StatsCard
@@ -273,7 +275,7 @@ export default function OverviewPage() {
           subtitle="Active applications & bookings"
           icon={CheckCircle2}
           gradient="bg-purple-500"
-          iconColor="text-purple-400"
+          iconColor="text-purple-600"
           trend="Kanban"
         />
       </div>
@@ -284,14 +286,14 @@ export default function OverviewPage() {
         <div className="lg:col-span-2 space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                <TrendingUp className="w-5 h-5 text-indigo-400" />
+              <div className="p-2 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200">
+                <TrendingUp className="w-5 h-5 text-indigo-600" />
               </div>
               <div>
-                <h3 className="text-lg font-black text-white tracking-tight">
+                <h3 className="text-lg font-black text-slate-900 tracking-tight font-display">
                   {getVerticalTitle()}
                 </h3>
-                <p className="text-xs text-slate-400 font-medium">
+                <p className="text-xs text-slate-500 font-medium">
                   Ranked by personalized match score & AI relevance
                 </p>
               </div>
@@ -306,29 +308,29 @@ export default function OverviewPage() {
                   placeholder="Filter listings..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-[#121526] border border-white/[0.08] rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-sans shadow-inner w-36 sm:w-48"
+                  className="bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 font-sans shadow-sm w-36 sm:w-48"
                 />
               </div>
 
               <button
                 onClick={loadData}
-                className="p-2 text-slate-400 hover:text-white rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] transition-colors"
+                className="p-2 text-slate-500 hover:text-slate-900 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 transition-colors shadow-sm cursor-pointer"
                 title="Refresh Feed"
               >
-                <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-indigo-400" : ""}`} />
+                <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-indigo-600" : ""}`} />
               </button>
             </div>
           </div>
 
           {opportunities.length === 0 ? (
-            <div className="bento-card p-14 text-center border border-white/[0.08] space-y-4">
-              <div className="w-16 h-16 rounded-3xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mx-auto shadow-inner">
-                <Compass className="w-8 h-8 text-indigo-400 animate-bounce" />
+            <div className="bento-card p-14 text-center border border-slate-200 bg-white/90 space-y-4 shadow-sm">
+              <div className="w-16 h-16 rounded-3xl bg-indigo-50 border border-indigo-200 flex items-center justify-center mx-auto shadow-inner">
+                <Compass className="w-8 h-8 text-indigo-600 animate-bounce" />
               </div>
               <div className="space-y-1">
-                <h4 className="text-lg font-extrabold text-white">No Listings Discovered Yet for this Radar</h4>
-                <p className="text-xs text-slate-400 max-w-sm mx-auto font-medium">
-                  Hit <strong className="text-indigo-300">&ldquo;Run Radar Now&rdquo;</strong> above to explore target sources and populate your custom feed.
+                <h4 className="text-lg font-extrabold text-slate-900 font-display">No Listings Discovered Yet for this Radar</h4>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto font-medium">
+                  Hit <strong className="text-indigo-600">&ldquo;Run Radar Now&rdquo;</strong> above to explore target sources and populate your custom feed.
                 </p>
               </div>
             </div>
@@ -349,7 +351,7 @@ export default function OverviewPage() {
             <div className="pt-2 text-center">
               <Link
                 href="/opportunities"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] text-indigo-300 hover:text-white text-xs font-bold border border-white/[0.08] transition-all hover:scale-105"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-white hover:bg-slate-50 text-indigo-600 hover:text-indigo-800 text-xs font-bold border border-slate-200 transition-all hover:scale-105 shadow-sm"
               >
                 <span>View Full Kanban Lifecycle Board</span>
                 <ArrowRight className="w-4 h-4" />
@@ -361,37 +363,37 @@ export default function OverviewPage() {
         {/* Right 1 Col: Engine Telemetry & History Bento */}
         <div className="space-y-6">
           {/* Architecture Callout Bento */}
-          <div className="bento-card p-6 bg-gradient-to-br from-indigo-950/40 via-purple-950/20 to-[#0e1022] border border-indigo-500/30 space-y-3 relative overflow-hidden">
-            <div className="flex items-center gap-2 text-indigo-300 font-extrabold text-xs uppercase tracking-wider">
-              <Layers className="w-4 h-4 text-indigo-400" />
+          <div className="bento-card p-6 bg-gradient-to-br from-indigo-50/80 via-purple-50/50 to-white border border-indigo-200/80 space-y-3 relative overflow-hidden shadow-sm">
+            <div className="flex items-center gap-2 text-indigo-900 font-black text-xs uppercase tracking-wider font-mono">
+              <Layers className="w-4 h-4 text-indigo-600" />
               <span>Unified Generalized Engine</span>
             </div>
-            <p className="text-xs text-slate-300 leading-relaxed font-medium">
+            <p className="text-xs text-slate-600 leading-relaxed font-medium">
               Every workflow executes on the exact same zero-pipeline-code core:
             </p>
-            <div className="font-mono text-[10px] text-indigo-200 bg-[#080914] p-3 rounded-2xl border border-white/[0.08] space-y-1 shadow-inner">
-              <div className="text-emerald-400">1. Intent → gpt-4o-mini Plan</div>
-              <div className="text-indigo-300">2. webcmd Stealth Exploration</div>
-              <div className="text-purple-300">3. Schema Normalizer & Diff</div>
-              <div className="text-cyan-300">4. Semantic Matcher & Ranker</div>
-              <div className="text-rose-300">5. Human Approval Gate</div>
+            <div className="font-mono text-[11px] text-slate-800 bg-white/95 p-3.5 rounded-2xl border border-slate-200 space-y-1.5 shadow-sm">
+              <div className="text-emerald-700 font-semibold">1. Intent → gpt-4o-mini Plan</div>
+              <div className="text-indigo-700 font-semibold">2. webcmd Stealth Exploration</div>
+              <div className="text-purple-700 font-semibold">3. Schema Normalizer & Diff</div>
+              <div className="text-sky-700 font-semibold">4. Semantic Matcher & Ranker</div>
+              <div className="text-rose-700 font-semibold">5. Human Approval Gate</div>
             </div>
           </div>
 
           {/* Real-time Pipeline Execution Telemetry Bento */}
-          <div className="bento-card p-6 border border-white/[0.08] space-y-4">
+          <div className="bento-card p-6 border border-slate-200 bg-white/90 space-y-4 shadow-sm">
             <div className="flex items-center justify-between">
-              <h4 className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-2">
-                <Activity className="w-4 h-4 text-indigo-400" />
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-2 font-mono">
+                <Activity className="w-4 h-4 text-indigo-600" />
                 Pipeline Execution History
               </h4>
-              <span className="text-[10px] text-emerald-400 font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+              <span className="text-[10px] text-emerald-700 font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 border border-emerald-200">
                 Live
               </span>
             </div>
 
             {recentRuns.length === 0 ? (
-              <p className="text-xs text-slate-500 py-6 text-center font-medium">
+              <p className="text-xs text-slate-400 py-6 text-center font-medium">
                 No runs recorded yet in SQLite database
               </p>
             ) : (
@@ -399,31 +401,31 @@ export default function OverviewPage() {
                 {recentRuns.map((run) => (
                   <div
                     key={run.id}
-                    className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.12] transition-colors space-y-2"
+                    className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 hover:border-indigo-300 transition-colors space-y-2"
                   >
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-black text-white capitalize">
+                      <span className="font-black text-slate-900 capitalize font-display">
                         {run.vertical.replace(/_/g, " ")}
                       </span>
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase font-mono ${
                         run.status === "success"
-                          ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                          ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
                           : run.status === "running"
-                          ? "bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 animate-pulse"
-                          : "bg-rose-500/15 text-rose-300 border border-rose-500/30"
+                          ? "bg-indigo-100 text-indigo-800 border border-indigo-200 animate-pulse"
+                          : "bg-rose-100 text-rose-800 border border-rose-200"
                       }`}>
                         {run.status}
                       </span>
                     </div>
 
                     {run.intent && (
-                      <p className="text-[11px] text-slate-400 italic truncate font-medium">
+                      <p className="text-[11px] text-slate-500 italic truncate font-medium">
                         &ldquo;{run.intent}&rdquo;
                       </p>
                     )}
 
-                    <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono pt-1 border-t border-white/[0.04]">
-                      <span className="text-indigo-300 font-semibold">{run.records_found} items ({run.new_records} new)</span>
+                    <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono pt-1 border-t border-slate-200">
+                      <span className="text-indigo-700 font-semibold">{run.records_found} items ({run.new_records} new)</span>
                       <span>{new Date(run.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
                   </div>

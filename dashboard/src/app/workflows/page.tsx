@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
   Play, 
   Sparkles, 
@@ -27,7 +27,14 @@ import {
   Share2,
   Maximize2,
   Copy,
-  Check
+  Check,
+  GripVertical,
+  ArrowUp,
+  ArrowDown,
+  Zap,
+  Gamepad2,
+  Compass,
+  Cpu
 } from "lucide-react";
 import { 
   fetchWorkflows, 
@@ -42,18 +49,111 @@ import {
 } from "@/lib/types";
 
 const BLOCK_TYPES = [
-  { type: "navigate", label: "Navigate URL", icon: Globe, color: "text-blue-400 border-blue-500/30 bg-blue-500/10", defaultParams: { url: "https://news.ycombinator.com" } },
-  { type: "scroll", label: "Smart Scroll", icon: ArrowDownCircle, color: "text-amber-400 border-amber-500/30 bg-amber-500/10", defaultParams: { scroll_times: 3, delay_ms: 1000, target: "" } },
-  { type: "click", label: "Click Element", icon: MousePointer, color: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10", defaultParams: { selector: "article.Box-row h2 a, h2 a, a" } },
-  { type: "extract_text", label: "Extract & Copy Text", icon: FileText, color: "text-teal-400 border-teal-500/30 bg-teal-500/10", defaultParams: { target: "readme", label: "README Documentation" } },
-  { type: "ai_filter", label: "AI Content Filter", icon: Brain, color: "text-purple-400 border-purple-500/30 bg-purple-500/10", defaultParams: { criteria: "Find top 3 highest quality articles", limit: 3 } },
-  { type: "screenshot", label: "Capture Screenshot", icon: Camera, color: "text-pink-400 border-pink-500/30 bg-pink-500/10", defaultParams: { label: "page_snapshot" } },
-  { type: "export", label: "Export Artifacts", icon: Save, color: "text-cyan-400 border-cyan-500/30 bg-cyan-500/10", defaultParams: { notify: true } },
+  { type: "navigate", label: "Navigate URL", icon: Globe, color: "text-blue-600 border-blue-200 bg-blue-50", defaultParams: { url: "https://news.ycombinator.com" } },
+  { type: "scroll", label: "Smart Scroll", icon: ArrowDownCircle, color: "text-amber-600 border-amber-200 bg-amber-50", defaultParams: { scroll_times: 3, delay_ms: 1000, target: "" } },
+  { type: "click", label: "Click Element", icon: MousePointer, color: "text-emerald-600 border-emerald-200 bg-emerald-50", defaultParams: { selector: "article.Box-row h2 a, h2 a, a" } },
+  { type: "extract_text", label: "Extract Text", icon: FileText, color: "text-teal-600 border-teal-200 bg-teal-50", defaultParams: { target: "readme", label: "README Documentation" } },
+  { type: "ai_filter", label: "AI Content Filter", icon: Brain, color: "text-purple-600 border-purple-200 bg-purple-50", defaultParams: { criteria: "Find top 3 highest quality articles", limit: 3 } },
+  { type: "screenshot", label: "Capture Snapshot", icon: Camera, color: "text-pink-600 border-pink-200 bg-pink-50", defaultParams: { label: "page_snapshot" } },
+  { type: "export", label: "Export Artifacts", icon: Save, color: "text-cyan-600 border-cyan-200 bg-cyan-50", defaultParams: { notify: true } },
+];
+
+const INITIAL_PRESETS: WorkflowDefinition[] = [
+  {
+    id: "template-bounty-hunter",
+    name: "Autonomous Open-Source Bounty Hunter",
+    description: "Visits GitHub Trending AI repositories, extracts README, scores with LLM, and captures visual proof.",
+    category: "Developer & Open Source",
+    steps: [
+      {
+        id: "step-1",
+        type: "navigate",
+        title: "Navigate to GitHub Trending",
+        description: "Opens GitHub Trending repositories page in CloakBrowser",
+        params: { url: "https://github.com/trending" },
+        icon: "Globe",
+      },
+      {
+        id: "step-2",
+        type: "click",
+        title: "Inspect Top AI Repository",
+        description: "Clicks on the first trending repo to view code and docs",
+        params: { selector: "article.Box-row h2 a, h2 a, a[href*='/'].text-bold" },
+        icon: "MousePointer",
+      },
+      {
+        id: "step-3",
+        type: "scroll",
+        title: "Dynamic Smart Scroll",
+        description: "Scrolls through the repository to trigger full lazy load",
+        params: { scroll_times: 3, delay_ms: 1000, target: "" },
+        icon: "ArrowDownCircle",
+      },
+      {
+        id: "step-4",
+        type: "extract_text",
+        title: "Extract README & Tech Stack",
+        description: "Scrapes the complete README documentation text",
+        params: { target: "readme", label: "Repository Documentation" },
+        icon: "FileText",
+      },
+      {
+        id: "step-5",
+        type: "screenshot",
+        title: "Capture Visual Telemetry Proof",
+        description: "Takes high-resolution screenshot of repository state",
+        params: { label: "repo_verification" },
+        icon: "Camera",
+      },
+    ],
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "template-form-solver",
+    name: "College Club & Hackathon Form Solver",
+    description: "Navigates to application portal, matches questions with Identity Vault, fills blanks, and captures proof.",
+    category: "Automation & Identity",
+    steps: [
+      {
+        id: "step-1",
+        type: "navigate",
+        title: "Open Registration Portal",
+        description: "Navigates to club or hackathon application form",
+        params: { url: "https://unstop.com/hackathons" },
+        icon: "Globe",
+      },
+      {
+        id: "step-2",
+        type: "ai_filter",
+        title: "Harvester & Identity Matcher",
+        description: "Matches question fields against user profile in Identity Vault",
+        params: { criteria: "Extract all form blanks, requirements, and personal questions" },
+        icon: "Brain",
+      },
+      {
+        id: "step-3",
+        type: "screenshot",
+        title: "Capture Pre-Fill Verification",
+        description: "Takes high-resolution screenshot of filled application",
+        params: { label: "form_proof" },
+        icon: "Camera",
+      },
+      {
+        id: "step-4",
+        type: "export",
+        title: "Stage to Approval Gate",
+        description: "Stages the filled application for 1-click human confirmation",
+        params: { gate: true },
+        icon: "ShieldCheck",
+      },
+    ],
+    created_at: new Date().toISOString(),
+  },
 ];
 
 export default function WorkflowStudioPage() {
-  const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([]);
-  const [activeWorkflow, setActiveWorkflow] = useState<WorkflowDefinition | null>(null);
+  const [workflows, setWorkflows] = useState<WorkflowDefinition[]>(INITIAL_PRESETS);
+  const [activeWorkflow, setActiveWorkflow] = useState<WorkflowDefinition | null>(INITIAL_PRESETS[0]);
   const [prompt, setPrompt] = useState("");
   const [synthesizing, setSynthesizing] = useState(false);
   const [running, setRunning] = useState(false);
@@ -61,13 +161,14 @@ export default function WorkflowStudioPage() {
   const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [copiedText, setCopiedText] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   const loadAllWorkflows = async () => {
     try {
       const data = await fetchWorkflows();
-      setWorkflows(data.workflows);
-      if (data.workflows.length > 0 && !activeWorkflow) {
-        setActiveWorkflow(data.workflows[0]);
+      if (data?.workflows && data.workflows.length > 0) {
+        setWorkflows(data.workflows);
+        setActiveWorkflow((prev) => prev || data.workflows[0]);
       }
     } catch (err) {
       console.error("Failed to load workflows:", err);
@@ -163,6 +264,42 @@ export default function WorkflowStudioPage() {
     });
   };
 
+  const moveStep = (index: number, direction: "up" | "down") => {
+    if (!activeWorkflow) return;
+    const newSteps = [...activeWorkflow.steps];
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newSteps.length) return;
+
+    const temp = newSteps[index];
+    newSteps[index] = newSteps[targetIndex];
+    newSteps[targetIndex] = temp;
+
+    setActiveWorkflow({
+      ...activeWorkflow,
+      steps: newSteps,
+    });
+  };
+
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (index: number) => {
+    if (draggedIndex === null || draggedIndex === index || !activeWorkflow) return;
+    const newSteps = [...activeWorkflow.steps];
+    const item = newSteps.splice(draggedIndex, 1)[0];
+    newSteps.splice(index, 0, item);
+    setActiveWorkflow({
+      ...activeWorkflow,
+      steps: newSteps,
+    });
+    setDraggedIndex(null);
+  };
+
   const updateStepParam = (stepIndex: number, key: string, value: any) => {
     if (!activeWorkflow) return;
     const updatedSteps = [...activeWorkflow.steps];
@@ -175,22 +312,26 @@ export default function WorkflowStudioPage() {
 
   return (
     <div className="p-6 sm:p-10 space-y-8 max-w-7xl mx-auto w-full">
-      {/* ── Top Header Bento ── */}
-      <div className="bento-card p-6 sm:p-8 border border-white/[0.09] bg-gradient-to-r from-[#120f26] via-[#1a1138] to-[#0f1429] flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-2xl relative overflow-hidden">
+      {/* ── Top Header Bento (Light Luxury) ── */}
+      <div className="bento-card p-6 sm:p-8 border border-slate-200/90 bg-gradient-to-r from-white via-indigo-50/40 to-purple-50/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-sm relative overflow-hidden">
+        {/* Subtle Game HUD Lines */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
+
         <div className="space-y-1.5 z-10">
           <div className="flex items-center gap-2">
-            <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
-              No-Code Agent Studio
+            <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-indigo-100 text-indigo-800 border border-indigo-200 flex items-center gap-1.5 font-mono">
+              <Gamepad2 className="w-3.5 h-3.5 text-indigo-600" />
+              Node Quest Studio
             </span>
-            <span className="text-xs text-slate-400 font-medium">
-              Gamified Visual Workflow Builder
+            <span className="text-xs text-slate-500 font-semibold">
+              Interactive Game-Style Action Canvas
             </span>
           </div>
-          <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-white">
+          <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-slate-900">
             Visual Autonomous Workflow Studio
           </h2>
-          <p className="text-xs sm:text-sm text-slate-300 font-medium">
-            Build custom browser agents visually · Scroll feeds · Extract & copy READMEs · Filter with AI · Capture screenshots · Zero code needed
+          <p className="text-xs sm:text-sm text-slate-600 font-medium max-w-3xl">
+            Drag, configure & link autonomous action nodes · Connect with live flow curves · Injected with Identity Vault cookies · Zero code needed
           </p>
         </div>
 
@@ -198,12 +339,12 @@ export default function WorkflowStudioPage() {
           <button
             onClick={handleRunWorkflow}
             disabled={running || !activeWorkflow || activeWorkflow.steps.length === 0}
-            className="px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-600 hover:from-emerald-400 hover:to-indigo-500 text-white text-xs font-black shadow-xl shadow-emerald-500/25 transition-all flex items-center gap-2 disabled:opacity-50 hover:scale-105"
+            className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-black shadow-lg shadow-indigo-500/25 transition-all flex items-center gap-2.5 disabled:opacity-50 hover:scale-105 active:scale-95 cursor-pointer"
           >
             {running ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Executing Agent...</span>
+                <Loader2 className="w-4 h-4 animate-spin text-white" />
+                <span>Executing Nodes...</span>
               </>
             ) : (
               <>
@@ -216,20 +357,20 @@ export default function WorkflowStudioPage() {
       </div>
 
       {feedback && (
-        <div className="p-4 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-xs font-bold text-indigo-300 flex items-center gap-2.5 shadow-lg animate-in fade-in">
-          <Sparkles className="w-4 h-4 text-indigo-400 shrink-0" />
+        <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 text-xs font-bold text-indigo-900 flex items-center gap-2.5 shadow-sm animate-in fade-in">
+          <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" />
           <span>{feedback}</span>
         </div>
       )}
 
-      {/* ── AI Natural Language Prompt Compiler Bar ── */}
-      <div className="bento-card p-6 sm:p-7 border border-indigo-500/30 bg-gradient-to-br from-indigo-950/30 via-[#10132b] to-[#0a0d1f] space-y-4 shadow-xl">
+      {/* ── AI Natural Language Prompt Compiler Bar (Light Glassmorphism) ── */}
+      <div className="bento-card p-6 sm:p-7 border border-indigo-200/80 bg-white/90 space-y-4 shadow-sm">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-2 font-mono">
-            <Sparkles className="w-4 h-4 text-indigo-400" />
+          <span className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-2 font-mono">
+            <Sparkles className="w-4 h-4 text-indigo-600" />
             AI Natural Language Workflow Generator
           </span>
-          <span className="text-[11px] text-slate-400 font-mono">Powered by gpt-4o-mini</span>
+          <span className="text-[11px] text-slate-500 font-mono font-semibold">Powered by gpt-4o-mini</span>
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch gap-3">
@@ -239,12 +380,12 @@ export default function WorkflowStudioPage() {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSynthesize()}
-            className="flex-1 bg-[#121528] border border-white/[0.08] focus:border-indigo-500 rounded-2xl px-4 py-3 text-xs text-white placeholder-slate-500 outline-none font-medium shadow-inner"
+            className="flex-1 bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white rounded-2xl px-4 py-3 text-xs text-slate-900 placeholder-slate-400 outline-none font-medium shadow-inner transition-all"
           />
           <button
             onClick={() => handleSynthesize()}
             disabled={synthesizing || !prompt}
-            className="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50 hover:scale-105 shrink-0"
+            className="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-md shadow-indigo-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 hover:scale-105 active:scale-95 shrink-0 cursor-pointer"
           >
             {synthesizing ? (
               <>
@@ -276,7 +417,7 @@ export default function WorkflowStudioPage() {
                 setPrompt(example);
                 handleSynthesize(example);
               }}
-              className="px-2.5 py-1 rounded-xl bg-white/[0.03] hover:bg-indigo-600/20 text-slate-300 hover:text-indigo-200 border border-white/[0.06] text-[11px] font-medium transition-colors"
+              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-800 border border-slate-200 hover:border-indigo-300 text-[11px] font-semibold transition-colors cursor-pointer"
             >
               {example}
             </button>
@@ -284,10 +425,10 @@ export default function WorkflowStudioPage() {
         </div>
       </div>
 
-      {/* ── Template & Saved Workflows Bar ── */}
+      {/* ── Preset Workflows Selector Bar ── */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-black uppercase tracking-wider text-slate-400 font-mono">
+          <span className="text-xs font-black uppercase tracking-wider text-slate-500 font-mono">
             Workflows & Presets ({workflows.length})
           </span>
         </div>
@@ -302,15 +443,17 @@ export default function WorkflowStudioPage() {
                   setActiveWorkflow(wf);
                   setExecutionResult(null);
                 }}
-                className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2.5 ${
+                className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2.5 cursor-pointer ${
                   isSelected
-                    ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02] border border-indigo-400/50"
-                    : "bg-[#0c0f24] hover:bg-white/[0.05] text-slate-300 border border-white/[0.08]"
+                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20 scale-[1.02] border border-indigo-600"
+                    : "bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm"
                 }`}
               >
                 <Layers className="w-3.5 h-3.5" />
                 <span>{wf.name}</span>
-                <span className="px-1.5 py-0.5 rounded-md text-[9px] bg-black/40 font-mono text-slate-300">
+                <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-mono ${
+                  isSelected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                }`}>
                   {wf.steps.length} Steps
                 </span>
               </button>
@@ -319,186 +462,275 @@ export default function WorkflowStudioPage() {
         </div>
       </div>
 
-      {/* ── Active Workflow Visual Node Canvas ── */}
+      {/* ── Active Workflow Video Game Action Canvas ── */}
       {activeWorkflow && (
         <div className="space-y-6">
-          <div className="bento-card p-6 sm:p-8 border border-white/[0.08] space-y-6 relative overflow-hidden">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.06]">
+          <div className="game-blueprint-grid rounded-3xl p-6 sm:p-8 border border-slate-300/80 shadow-md space-y-8 relative overflow-hidden">
+            {/* Canvas Header HUD */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-200 bg-white/80 backdrop-blur-md p-4 rounded-2xl border">
               <div>
-                <h3 className="text-lg font-black text-white flex items-center gap-2">
-                  <span>{activeWorkflow.name}</span>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30 font-mono">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 animate-pulse" />
+                  <h3 className="text-lg font-black text-slate-900 flex items-center gap-2 font-display">
+                    <span>{activeWorkflow.name}</span>
+                  </h3>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-200 font-mono">
                     {activeWorkflow.category}
                   </span>
-                </h3>
-                <p className="text-xs text-slate-400 mt-1 font-medium">{activeWorkflow.description}</p>
+                </div>
+                <p className="text-xs text-slate-500 mt-1 font-medium">{activeWorkflow.description}</p>
               </div>
 
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleSaveWorkflow}
-                  className="px-4 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-200 border border-white/[0.08] text-xs font-bold transition-all flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm hover:scale-105 cursor-pointer"
                 >
-                  <Save className="w-3.5 h-3.5" />
+                  <Save className="w-3.5 h-3.5 text-indigo-600" />
                   <span>Save Workflow</span>
                 </button>
               </div>
             </div>
 
-            {/* Visual Action Blocks Connector Graph */}
+            {/* ── Interactive Draggable Action Blocks Graph with Dashed Flow Arrows ── */}
             <div className="space-y-4">
-              <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 font-mono block">
-                Visual Execution Graph (Step 1 ➔ {activeWorkflow.steps.length}):
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 font-mono flex items-center gap-2">
+                  <Cpu className="w-4 h-4 text-indigo-600" />
+                  Action Pipeline Nodes (Drag & Reorder blocks):
+                </span>
+                <span className="text-[10px] font-mono text-slate-400">
+                  {activeWorkflow.steps.length} Linked Nodes
+                </span>
+              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Node Chain Layout */}
+              <div className="space-y-6">
                 {activeWorkflow.steps.map((step, idx) => {
                   const blockDef = BLOCK_TYPES.find((b) => b.type === step.type) || BLOCK_TYPES[0];
                   const Icon = blockDef.icon;
+                  const isLast = idx === activeWorkflow.steps.length - 1;
 
                   return (
-                    <div
-                      key={step.id}
-                      className="p-5 rounded-2xl bg-[#0b0e22] border border-white/[0.08] hover:border-indigo-500/50 space-y-3 transition-all relative group shadow-lg"
-                    >
-                      {/* Step Header */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2.5">
-                          <span className={`p-2 rounded-xl border ${blockDef.color}`}>
-                            <Icon className="w-4 h-4" />
-                          </span>
-                          <div>
-                            <span className="text-xs font-black text-white block">
-                              {step.title}
+                    <React.Fragment key={step.id}>
+                      {/* Draggable Action Node Card */}
+                      <div
+                        draggable
+                        onDragStart={() => handleDragStart(idx)}
+                        onDragOver={(e) => handleDragOver(e, idx)}
+                        onDrop={() => handleDrop(idx)}
+                        className={`game-node-card p-5 relative group ${
+                          draggedIndex === idx ? "opacity-50 scale-95" : ""
+                        }`}
+                      >
+                        {/* Node HUD Level Bar */}
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+                          <div className="flex items-center gap-2">
+                            {/* Drag Grip Handle */}
+                            <div className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-indigo-600 p-1 rounded-lg hover:bg-slate-100">
+                              <GripVertical className="w-4 h-4" />
+                            </div>
+
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-700 font-mono border border-slate-200">
+                              NODE #{String(idx + 1).padStart(2, "0")}
                             </span>
-                            <span className="text-[10px] font-mono text-slate-400 uppercase">
+
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider font-mono border ${blockDef.color}`}>
                               {step.type}
                             </span>
                           </div>
+
+                          {/* Reorder and Delete Controls */}
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => moveStep(idx, "up")}
+                              disabled={idx === 0}
+                              className="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-30 rounded hover:bg-slate-100"
+                              title="Move Up"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => moveStep(idx, "down")}
+                              disabled={isLast}
+                              className="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-30 rounded hover:bg-slate-100"
+                              title="Move Down"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => removeStep(step.id)}
+                              className="p-1 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50 ml-1 transition-colors"
+                              title="Delete Block"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
 
-                        <button
-                          onClick={() => removeStep(step.id)}
-                          className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-white/[0.05] transition-colors"
-                          title="Remove Block"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-
-                      <p className="text-[11px] text-slate-300 font-medium leading-relaxed">
-                        {step.description}
-                      </p>
-
-                      {/* Step Parameters Customizer */}
-                      <div className="p-3 rounded-xl bg-black/40 border border-white/[0.04] space-y-2 text-xs">
-                        {step.type === "navigate" && (
-                          <div>
-                            <label className="block text-[10px] text-slate-400 font-mono uppercase mb-1">Target URL</label>
-                            <input
-                              type="text"
-                              value={step.params.url || ""}
-                              onChange={(e) => updateStepParam(idx, "url", e.target.value)}
-                              className="w-full bg-[#121528] border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-[11px] text-white font-mono outline-none"
-                            />
-                          </div>
-                        )}
-
-                        {step.type === "click" && (
-                          <div>
-                            <label className="block text-[10px] text-slate-400 font-mono uppercase mb-1">Target Selector / Link</label>
-                            <input
-                              type="text"
-                              value={step.params.selector || ""}
-                              onChange={(e) => updateStepParam(idx, "selector", e.target.value)}
-                              className="w-full bg-[#121528] border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-[11px] text-white font-mono outline-none"
-                              placeholder="e.g. article.Box-row h2 a, h2 a, a"
-                            />
-                          </div>
-                        )}
-
-                        {step.type === "extract_text" && (
-                          <div className="space-y-2">
-                            <div>
-                              <label className="block text-[10px] text-slate-400 font-mono uppercase mb-1">Content Target</label>
-                              <input
-                                type="text"
-                                value={step.params.target || "readme"}
-                                onChange={(e) => updateStepParam(idx, "target", e.target.value)}
-                                className="w-full bg-[#121528] border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-[11px] text-white font-mono outline-none"
-                                placeholder="readme | article | auto"
-                              />
+                        {/* Node Content Body */}
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+                          <div className="md:col-span-4 flex items-start gap-3">
+                            <div className={`p-3 rounded-2xl border shadow-sm shrink-0 ${blockDef.color}`}>
+                              <Icon className="w-5 h-5" />
                             </div>
                             <div>
-                              <label className="block text-[10px] text-slate-400 font-mono uppercase mb-1">Content Label</label>
-                              <input
-                                type="text"
-                                value={step.params.label || "README Content"}
-                                onChange={(e) => updateStepParam(idx, "label", e.target.value)}
-                                className="w-full bg-[#121528] border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-[11px] text-white font-mono outline-none"
-                              />
+                              <h4 className="text-sm font-extrabold text-slate-900 leading-tight">
+                                {step.title}
+                              </h4>
+                              <p className="text-xs text-slate-500 font-medium mt-1">
+                                {step.description}
+                              </p>
                             </div>
                           </div>
-                        )}
 
-                        {step.type === "scroll" && (
-                          <div className="space-y-2">
-                            <div className="grid grid-cols-2 gap-2">
+                          {/* Node Parameter Customizer Box */}
+                          <div className="md:col-span-8 bg-slate-50 border border-slate-200/90 rounded-2xl p-3.5 shadow-inner">
+                            {step.type === "navigate" && (
                               <div>
-                                <label className="block text-[10px] text-slate-400 font-mono uppercase mb-1">Scroll Times</label>
+                                <label className="block text-[10px] text-slate-500 font-mono uppercase font-bold mb-1">Target URL</label>
                                 <input
-                                  type="number"
-                                  value={step.params.scroll_times || 3}
-                                  onChange={(e) => updateStepParam(idx, "scroll_times", Number(e.target.value))}
-                                  className="w-full bg-[#121528] border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-[11px] text-white font-mono outline-none"
+                                  type="text"
+                                  value={step.params.url || ""}
+                                  onChange={(e) => updateStepParam(idx, "url", e.target.value)}
+                                  className="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono outline-none shadow-sm"
+                                  placeholder="https://..."
                                 />
                               </div>
+                            )}
+
+                            {step.type === "click" && (
                               <div>
-                                <label className="block text-[10px] text-slate-400 font-mono uppercase mb-1">Delay (ms)</label>
+                                <label className="block text-[10px] text-slate-500 font-mono uppercase font-bold mb-1">Target Selector / Intent Text</label>
                                 <input
-                                  type="number"
-                                  value={step.params.delay_ms || 1000}
-                                  onChange={(e) => updateStepParam(idx, "delay_ms", Number(e.target.value))}
-                                  className="w-full bg-[#121528] border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-[11px] text-white font-mono outline-none"
+                                  type="text"
+                                  value={step.params.selector || ""}
+                                  onChange={(e) => updateStepParam(idx, "selector", e.target.value)}
+                                  className="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono outline-none shadow-sm"
+                                  placeholder="e.g. button:has-text('Download'), h2 a, a"
                                 />
                               </div>
-                            </div>
-                          </div>
-                        )}
+                            )}
 
-                        {step.type === "ai_filter" && (
-                          <div>
-                            <label className="block text-[10px] text-slate-400 font-mono uppercase mb-1">AI Prompt Criteria</label>
-                            <textarea
-                              rows={2}
-                              value={step.params.criteria || ""}
-                              onChange={(e) => updateStepParam(idx, "criteria", e.target.value)}
-                              className="w-full bg-[#121528] border border-white/[0.08] rounded-lg p-2 text-[11px] text-white outline-none"
-                            />
-                          </div>
-                        )}
+                            {step.type === "extract_text" && (
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="block text-[10px] text-slate-500 font-mono uppercase font-bold mb-1">Content Target</label>
+                                  <input
+                                    type="text"
+                                    value={step.params.target || "readme"}
+                                    onChange={(e) => updateStepParam(idx, "target", e.target.value)}
+                                    className="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono outline-none shadow-sm"
+                                    placeholder="readme | article | auto"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] text-slate-500 font-mono uppercase font-bold mb-1">Content Label</label>
+                                  <input
+                                    type="text"
+                                    value={step.params.label || "README Content"}
+                                    onChange={(e) => updateStepParam(idx, "label", e.target.value)}
+                                    className="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono outline-none shadow-sm"
+                                  />
+                                </div>
+                              </div>
+                            )}
 
-                        {step.type === "screenshot" && (
-                          <div>
-                            <label className="block text-[10px] text-slate-400 font-mono uppercase mb-1">Snapshot Label</label>
-                            <input
-                              type="text"
-                              value={step.params.label || "snapshot"}
-                              onChange={(e) => updateStepParam(idx, "label", e.target.value)}
-                              className="w-full bg-[#121528] border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-[11px] text-white font-mono outline-none"
-                            />
+                            {step.type === "scroll" && (
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="block text-[10px] text-slate-500 font-mono uppercase font-bold mb-1">Scroll Times</label>
+                                  <input
+                                    type="number"
+                                    value={step.params.scroll_times || 3}
+                                    onChange={(e) => updateStepParam(idx, "scroll_times", Number(e.target.value))}
+                                    className="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono outline-none shadow-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] text-slate-500 font-mono uppercase font-bold mb-1">Delay (ms)</label>
+                                  <input
+                                    type="number"
+                                    value={step.params.delay_ms || 1000}
+                                    onChange={(e) => updateStepParam(idx, "delay_ms", Number(e.target.value))}
+                                    className="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono outline-none shadow-sm"
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {step.type === "ai_filter" && (
+                              <div>
+                                <label className="block text-[10px] text-slate-500 font-mono uppercase font-bold mb-1">AI Prompt Criteria</label>
+                                <textarea
+                                  rows={2}
+                                  value={step.params.criteria || ""}
+                                  onChange={(e) => updateStepParam(idx, "criteria", e.target.value)}
+                                  className="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-xl p-2 text-xs text-slate-900 outline-none shadow-sm"
+                                />
+                              </div>
+                            )}
+
+                            {step.type === "screenshot" && (
+                              <div>
+                                <label className="block text-[10px] text-slate-500 font-mono uppercase font-bold mb-1">Snapshot Label</label>
+                                <input
+                                  type="text"
+                                  value={step.params.label || "snapshot"}
+                                  onChange={(e) => updateStepParam(idx, "label", e.target.value)}
+                                  className="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono outline-none shadow-sm"
+                                />
+                              </div>
+                            )}
+
+                            {step.type === "export" && (
+                              <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 py-1">
+                                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                                <span>Export full structured proofs & screenshots to Scout Gallery</span>
+                              </div>
+                            )}
                           </div>
-                        )}
+                        </div>
                       </div>
-                    </div>
+
+                      {/* ── Animated Dashed Curvy SVG Flow Wire between Nodes ── */}
+                      {!isLast && (
+                        <div className="flex justify-center items-center py-1 relative">
+                          <svg width="120" height="50" viewBox="0 0 120 50" className="overflow-visible">
+                            <defs>
+                              <linearGradient id={`flow-grad-${idx}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" stopColor="#6366f1" />
+                                <stop offset="50%" stopColor="#a855f7" />
+                                <stop offset="100%" stopColor="#3b82f6" />
+                              </linearGradient>
+                            </defs>
+                            {/* Curvy S-Bezier connector arrow */}
+                            <path
+                              d="M 60,0 C 60,25 60,25 60,42"
+                              fill="none"
+                              stroke={`url(#flow-grad-${idx})`}
+                              strokeWidth="3"
+                              strokeDasharray="6 6"
+                              className="animate-dash-flow"
+                            />
+                            {/* Flow Arrow Head */}
+                            <polygon points="55,40 65,40 60,48" fill="#3b82f6" />
+                            {/* Glowing Socket Pulse Dot */}
+                            <circle cx="60" cy="0" r="4" fill="#6366f1" />
+                          </svg>
+                        </div>
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </div>
             </div>
 
-            {/* Add Action Block Palette */}
-            <div className="pt-4 border-t border-white/[0.06] space-y-3">
-              <span className="text-xs font-bold text-slate-300 block">Add Action Block to Pipeline:</span>
+            {/* ── Add Action Block Inventory / Ability Bar ── */}
+            <div className="pt-6 border-t border-slate-200 bg-white/80 backdrop-blur-md p-4 rounded-2xl border space-y-3">
+              <span className="text-xs font-extrabold text-slate-700 block uppercase font-mono">
+                + Add Action Ability to Pipeline:
+              </span>
               <div className="flex flex-wrap gap-2">
                 {BLOCK_TYPES.map((block) => {
                   const Icon = block.icon;
@@ -506,10 +738,11 @@ export default function WorkflowStudioPage() {
                     <button
                       key={block.type}
                       onClick={() => addStep(block.type)}
-                      className="px-3.5 py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] text-slate-200 border border-white/[0.06] hover:border-indigo-500/40 text-xs font-bold transition-all flex items-center gap-2 hover:scale-105"
+                      className="px-3.5 py-2 rounded-xl bg-white hover:bg-indigo-50 text-slate-700 hover:text-indigo-800 border border-slate-200 hover:border-indigo-300 text-xs font-bold transition-all flex items-center gap-2 shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
                     >
-                      <Plus className="w-3.5 h-3.5 text-indigo-400" />
-                      <span>+ {block.label}</span>
+                      <Plus className="w-3.5 h-3.5 text-indigo-600" />
+                      <Icon className="w-3.5 h-3.5 text-slate-500" />
+                      <span>{block.label}</span>
                     </button>
                   );
                 })}
@@ -519,18 +752,18 @@ export default function WorkflowStudioPage() {
         </div>
       )}
 
-      {/* ── Live Execution Deck & Visual Artifact Gallery ── */}
+      {/* ── Live Execution Deck & Visual Artifact Gallery (Light Luxury) ── */}
       {executionResult && (
-        <div className="bento-card p-6 sm:p-8 border border-emerald-500/30 bg-gradient-to-br from-emerald-950/20 via-[#0d1226] to-[#090b1c] space-y-6 shadow-2xl animate-in fade-in">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.08]">
+        <div className="bento-card p-6 sm:p-8 border border-emerald-300 bg-emerald-50/40 space-y-6 shadow-md animate-in fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-emerald-200">
             <div className="flex items-center gap-2.5">
-              <CheckCircle2 className="w-6 h-6 text-emerald-400 shrink-0" />
+              <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
               <div>
-                <h3 className="text-base font-black text-white">
+                <h3 className="text-base font-black text-slate-900">
                   Autonomous Workflow Run Finished ({executionResult.completed_steps}/{executionResult.total_steps} Steps)
                 </h3>
-                <span className="text-[11px] font-mono text-slate-400">
-                  Status: {executionResult.status.toUpperCase()} · Finished in Real CloakBrowser
+                <span className="text-[11px] font-mono text-emerald-700 font-bold">
+                  Status: {executionResult.status.toUpperCase()} · Executed in Real CloakBrowser
                 </span>
               </div>
             </div>
@@ -538,17 +771,17 @@ export default function WorkflowStudioPage() {
 
           {/* Step-by-Step Telemetry Cards */}
           <div className="space-y-3">
-            <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 font-mono block">
+            <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 font-mono block">
               Step Execution Telemetry:
             </span>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {executionResult.step_results.map((sr, idx) => (
-                <div key={idx} className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/[0.06] space-y-1.5">
+                <div key={idx} className="p-3.5 rounded-2xl bg-white border border-slate-200 space-y-1.5 shadow-sm">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-white font-bold text-xs">{sr.title}</span>
-                    <span className="text-[10px] font-mono text-emerald-300">{sr.duration_ms}ms</span>
+                    <span className="text-slate-900 font-bold text-xs">{sr.title}</span>
+                    <span className="text-[10px] font-mono text-emerald-700 font-extrabold">{sr.duration_ms}ms</span>
                   </div>
-                  <p className="text-[11px] text-slate-300 font-mono">{sr.output_message}</p>
+                  <p className="text-[11px] text-slate-600 font-mono">{sr.output_message}</p>
                 </div>
               ))}
             </div>
@@ -556,31 +789,31 @@ export default function WorkflowStudioPage() {
 
           {/* ── Extracted Live Text / README Box (if available) ── */}
           {executionResult.extracted_text && (
-            <div className="space-y-3 pt-4 border-t border-white/[0.08] animate-in fade-in">
+            <div className="space-y-3 pt-4 border-t border-emerald-200 animate-in fade-in">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <span className="text-xs font-black uppercase tracking-wider text-teal-300 font-mono flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-teal-400" />
+                <span className="text-xs font-black uppercase tracking-wider text-teal-800 font-mono flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-teal-600" />
                   Extracted Live Content & Documentation ({executionResult.extracted_text.length} Characters):
                 </span>
                 <button
                   onClick={() => handleCopyText(executionResult.extracted_text!)}
-                  className="px-4 py-2 rounded-xl bg-teal-500/20 hover:bg-teal-500/30 text-teal-200 border border-teal-500/40 text-xs font-black transition-all flex items-center gap-2 shadow-lg shadow-teal-500/10 hover:scale-105"
+                  className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black transition-all flex items-center gap-2 shadow-sm hover:scale-105 cursor-pointer"
                 >
                   {copiedText ? (
                     <>
-                      <Check className="w-4 h-4 text-emerald-400" />
+                      <Check className="w-4 h-4" />
                       <span>Copied to Clipboard!</span>
                     </>
                   ) : (
                     <>
-                      <Copy className="w-4 h-4 text-teal-300" />
+                      <Copy className="w-4 h-4" />
                       <span>Copy Full Output</span>
                     </>
                   )}
                 </button>
               </div>
 
-              <div className="p-5 rounded-2xl bg-[#090d1f] border border-teal-500/20 shadow-inner font-mono text-xs text-slate-200 max-h-96 overflow-y-auto whitespace-pre-wrap leading-relaxed select-text selection:bg-teal-500/30">
+              <div className="p-5 rounded-2xl bg-white border border-teal-200 shadow-inner font-mono text-xs text-slate-800 max-h-96 overflow-y-auto whitespace-pre-wrap leading-relaxed select-text selection:bg-teal-100">
                 {executionResult.extracted_text}
               </div>
             </div>
@@ -588,26 +821,26 @@ export default function WorkflowStudioPage() {
 
           {/* Extracted Items / Articles Table */}
           {executionResult.extracted_items && executionResult.extracted_items.length > 0 && (
-            <div className="space-y-3 pt-4 border-t border-white/[0.06]">
-              <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 font-mono block">
+            <div className="space-y-3 pt-4 border-t border-emerald-200">
+              <span className="text-[11px] font-black uppercase tracking-wider text-slate-600 font-mono block">
                 Extracted & AI-Filtered Items ({executionResult.extracted_items.length}):
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {executionResult.extracted_items.map((item, idx) => (
-                  <div key={idx} className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] space-y-2">
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-mono">
+                  <div key={idx} className="p-4 rounded-2xl bg-white border border-slate-200 space-y-2 shadow-sm">
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-indigo-100 text-indigo-800 border border-indigo-200 font-mono">
                       Rank #{idx + 1}
                     </span>
-                    <h4 className="text-xs font-bold text-white line-clamp-2">{item.title}</h4>
+                    <h4 className="text-xs font-bold text-slate-900 line-clamp-2">{item.title}</h4>
                     {item.reason && (
-                      <p className="text-[10px] text-emerald-400 italic">💡 {item.reason}</p>
+                      <p className="text-[10px] text-emerald-700 font-semibold italic">💡 {item.reason}</p>
                     )}
                     {item.link && (
                       <a
                         href={item.link}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-[11px] text-indigo-400 hover:text-indigo-300 font-mono flex items-center gap-1 mt-1 truncate"
+                        className="text-[11px] text-indigo-600 hover:text-indigo-800 font-mono flex items-center gap-1 mt-1 truncate"
                       >
                         <ExternalLink className="w-3 h-3 shrink-0" />
                         <span className="truncate">{item.link}</span>
@@ -621,26 +854,26 @@ export default function WorkflowStudioPage() {
 
           {/* Captured Screenshots Gallery */}
           {executionResult.screenshots && executionResult.screenshots.length > 0 && (
-            <div className="space-y-3 pt-4 border-t border-white/[0.06]">
-              <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 font-mono block flex items-center gap-2">
-                <Camera className="w-4 h-4 text-pink-400" />
+            <div className="space-y-3 pt-4 border-t border-emerald-200">
+              <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 font-mono block flex items-center gap-2">
+                <Camera className="w-4 h-4 text-pink-600" />
                 Visual Screenshot Proofs ({executionResult.screenshots.length}):
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {executionResult.screenshots.map((snapUrl, idx) => (
-                  <div key={idx} className="rounded-2xl overflow-hidden border border-white/[0.1] bg-black/60 shadow-xl group relative">
+                  <div key={idx} className="rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-md group relative">
                     <img
                       src={`http://localhost:8000${snapUrl}`}
                       alt="Workflow Screenshot"
                       className="w-full h-auto object-cover transition-transform group-hover:scale-105 duration-300"
                     />
-                    <div className="p-3 bg-[#0a0d1f]/90 backdrop-blur-md flex items-center justify-between">
-                      <span className="text-[11px] font-mono text-slate-300">Proof Snapshot #{idx + 1}</span>
+                    <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between">
+                      <span className="text-[11px] font-mono text-slate-700 font-semibold">Proof Snapshot #{idx + 1}</span>
                       <a
                         href={`http://localhost:8000${snapUrl}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="p-1.5 rounded-lg bg-white/[0.08] hover:bg-white/[0.15] text-white"
+                        className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700"
                       >
                         <Maximize2 className="w-3.5 h-3.5" />
                       </a>
