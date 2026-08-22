@@ -143,17 +143,90 @@ def _get_auth_cookies_script(target_url: str = "") -> str:
                 "secure": True,
             })
 
-        # Generic session cookies stored in custom_vault
-        if "session_cookies" in custom_vault:
-            try:
-                raw = json.loads(custom_vault["session_cookies"])
-                if isinstance(raw, list):
-                    cookies.extend(raw)
-            except Exception:
-                pass
+        # YouTube / Google auth cookies from Identity Vault
+        if "youtube.com" in target_url.lower() or not target_url:
+            # 1. Raw cookie header string (e.g. "LOGIN_INFO=...; SID=...; __Secure-3PSID=...")
+            raw_yt_cookie = custom_vault.get("youtube_cookie_header") or custom_vault.get("youtube_cookies_raw") or custom_vault.get("youtube_cookie")
+            if raw_yt_cookie and isinstance(raw_yt_cookie, str):
+                for pair in raw_yt_cookie.split(";"):
+                    if "=" in pair:
+                        k, v = pair.strip().split("=", 1)
+                        if k and v:
+                            c_name = k.strip()
+                            c_val = v.strip()
+                            cookies.append({
+                                "name": c_name,
+                                "value": c_val,
+                                "domain": ".youtube.com",
+                                "path": "/",
+                                "secure": True,
+                            })
+                            if c_name in ["SID", "HSID", "SSID", "APISID", "SAPISID", "__Secure-1PSID", "__Secure-3PSID", "__Secure-1PAPISID", "__Secure-3PAPISID"]:
+                                cookies.append({
+                                    "name": c_name,
+                                    "value": c_val,
+                                    "domain": ".google.com",
+                                    "path": "/",
+                                    "secure": True,
+                                })
+
+            # 2. Key-value vault entries
+            for yt_key in ["LOGIN_INFO", "SID", "HSID", "SSID", "APISID", "SAPISID", "__Secure-1PSID", "__Secure-3PSID", "__Secure-1PAPISID", "__Secure-3PAPISID", "VISITOR_INFO1_LIVE", "YSC"]:
+                val = custom_vault.get(yt_key) or custom_vault.get(f"youtube_{yt_key.lower()}") or custom_vault.get(f"yt_{yt_key.lower()}")
+                if val:
+                    cookies.append({
+                        "name": yt_key,
+                        "value": str(val).strip(),
+                        "domain": ".youtube.com",
+                        "path": "/",
+                        "secure": True,
+                    })
+                    if yt_key in ["SID", "HSID", "SSID", "APISID", "SAPISID", "__Secure-1PSID", "__Secure-3PSID", "__Secure-1PAPISID", "__Secure-3PAPISID"]:
+                        cookies.append({
+                            "name": yt_key,
+                            "value": str(val).strip(),
+                            "domain": ".google.com",
+                            "path": "/",
+                            "secure": True,
+                        })
+
+        # Generic session cookies stored in custom_vault (JSON array or list from Cookie-Editor / Netscape)
+        for c_key in ["session_cookies", "youtube_cookies", "google_cookies", "browser_cookies"]:
+            if c_key in custom_vault:
+                try:
+                    raw = custom_vault[c_key]
+                    if isinstance(raw, str):
+                        raw = json.loads(raw)
+                    if isinstance(raw, list):
+                        for c in raw:
+                            if isinstance(c, dict) and "name" in c and "value" in c:
+                                norm_cookie = {
+                                    "name": str(c["name"]).strip(),
+                                    "value": str(c["value"]).strip(),
+                                    "domain": str(c.get("domain", ".youtube.com")).strip(),
+                                    "path": str(c.get("path", "/")).strip(),
+                                    "secure": bool(c.get("secure", True)),
+                                }
+                                # Sanitize sameSite for Playwright compatibility
+                                raw_ss = str(c.get("sameSite", "")).lower()
+                                if raw_ss in ["no_restriction", "none"]:
+                                    norm_cookie["sameSite"] = "None"
+                                elif raw_ss in ["lax", "strict"]:
+                                    norm_cookie["sameSite"] = raw_ss.capitalize()
+                                
+                                if "httpOnly" in c:
+                                    norm_cookie["httpOnly"] = bool(c["httpOnly"])
+                                cookies.append(norm_cookie)
+                except Exception as parse_err:
+                    logger.debug("Could not parse %s: %s", c_key, parse_err)
 
         if cookies:
-            cookies_json = json.dumps(cookies)
+            # Deduplicate cookies by (name, domain)
+            deduped = {}
+            for c in cookies:
+                deduped[(c["name"], c.get("domain", ""))] = c
+            valid_cookies = list(deduped.values())
+            cookies_json = json.dumps(valid_cookies)
             return f"""
 try {{
     await page.context().addCookies({cookies_json});
@@ -246,61 +319,74 @@ console.log(JSON.stringify({{ status: 'success', url: page.url(), title: await p
                     step_res.data = data
 
                 elif step.type == "scroll":
-                    times = step.params.get("scroll_times", 3)
-                    delay_ms = step.params.get("delay_ms", 1000)
+                    times = int(step.params.get("scroll_times", 2))
+                    delay_ms = int(step.params.get("delay_ms", 1200))
                     target = step.params.get("target", "")
-                    
-                    # Content-aware responsive scrolling: dynamically locates keywords (README, About, Details, etc.)
+                    direction = -1 if times < 0 else 1
+                    abs_times = max(1, abs(times))
+
+                    scroll_snap_name = f"scout_{uuid.uuid4().hex[:8]}_scrolled_view.png"
+                    scroll_snap_path = SCREENSHOTS_DIR / scroll_snap_name
+
                     scroll_script = f"""
 try {{
     const explicitTarget = '{target}';
     const isReadmeTarget = '{step.title.lower()}'.includes('readme') || '{step.description.lower()}'.includes('readme');
     const targetSel = explicitTarget || (isReadmeTarget ? 'article.markdown-body, #readme, div[data-target="readme-toc.content"]' : '');
     
+    const startY = await page.evaluate(() => window.scrollY);
+
     if (targetSel) {{
         const targetEl = page.locator(targetSel).first();
         if (await targetEl.count() > 0) {{
-            await targetEl.scrollIntoViewIfNeeded();
-            await page.waitForTimeout(1000);
-            console.log(JSON.stringify({{ status: 'success', scrolledTo: targetSel, finalHeight: await page.evaluate(() => window.scrollY) }}));
+            await targetEl.scrollIntoViewIfNeeded({{ timeout: 2500 }}).catch(() => {{}});
+            await page.waitForTimeout(600);
+            const endY = await page.evaluate(() => window.scrollY);
+            await page.screenshot({{ path: '{scroll_snap_name}' }});
+            console.log(JSON.stringify({{ status: 'success', scrolledTo: targetSel, startY, endY, delta: endY - startY }}));
             return;
         }}
     }}
 
-    // Dynamic heuristic: search for headings or sections matching semantic target
-    const foundKeyword = await page.evaluate((isReadme) => {{
-        const candidates = Array.from(document.querySelectorAll('h1, h2, h3, h4, section, article, div'));
-        const match = candidates.find(el => {{
-            const txt = (el.innerText || '').toLowerCase();
-            return isReadme ? txt.includes('readme') : (txt.includes('about') || txt.includes('getting started'));
-        }});
-        if (match) {{
-            match.scrollIntoView({{ behavior: 'smooth', block: 'start' }});
-            return true;
-        }}
-        return false;
-    }}, isReadmeTarget);
-
-    if (foundKeyword) {{
-        await page.waitForTimeout(1000);
-        console.log(JSON.stringify({{ status: 'success', matchedKeyword: true, finalHeight: await page.evaluate(() => window.scrollY) }}));
-        return;
-    }}
-
-    let finalHeight = 0;
-    for (let i = 0; i < {times}; i++) {{
-        await page.evaluate(() => window.scrollBy(0, window.innerHeight * 0.9));
+    // Responsive smooth scrolling with actual viewport displacement
+    for (let i = 0; i < {abs_times}; i++) {{
+        await page.evaluate((dir) => {{
+            const moveBy = (window.innerHeight * 0.75) * dir;
+            window.scrollBy({{ top: moveBy, left: 0, behavior: 'smooth' }});
+        }}, {direction});
         await page.waitForTimeout({delay_ms});
     }}
-    finalHeight = await page.evaluate(() => document.body.scrollHeight);
-    console.log(JSON.stringify({{ status: 'success', scrolledTimes: {times}, finalHeight }}));
+
+    const endY = await page.evaluate(() => window.scrollY);
+    await page.screenshot({{ path: '{scroll_snap_name}' }});
+    console.log(JSON.stringify({{ status: 'success', startY, endY, delta: endY - startY }}));
 }} catch (err) {{
     console.log(JSON.stringify({{ status: 'error', message: err.message }}));
 }}
 """
-                    out = await adapter._run_cli(["--session", session_id, "browser", "run", "--stdin"], stdin_input=scroll_script, timeout=30)
+                    out = await adapter._run_cli(["--session", session_id, "browser", "run", "--stdin"], stdin_input=scroll_script, timeout=35)
                     scroll_data = _extract_json_from_webcmd(out) or {}
-                    step_res.output_message = f"Responsively scrolled to content / revealed dynamic elements."
+                    delta = int(scroll_data.get("delta", 0))
+                    end_y = int(scroll_data.get("endY", 0))
+                    
+                    # Extract screenshot artifact from webcmd
+                    try:
+                        snap_json = json.loads(out)
+                        artifacts = snap_json.get("artifacts", [])
+                        if artifacts:
+                            art = artifacts[0]
+                            webcmd_cache_path = Path.home() / ".webcmd" / "cache" / "browser-run" / art.get("artifactId") / art.get("filename")
+                            if webcmd_cache_path.exists():
+                                import shutil
+                                shutil.copy2(webcmd_cache_path, scroll_snap_path)
+                                snap_url = f"/storage/screenshots/{scroll_snap_name}"
+                                result.screenshots.append(snap_url)
+                                step_res.screenshot_url = snap_url
+                    except Exception as e:
+                        logger.debug("Scroll snapshot extraction note: %s", e)
+
+                    direction_str = "down" if delta >= 0 else "up"
+                    step_res.output_message = f"Responsively scrolled {direction_str} by {abs(delta)}px (position: {end_y}px) — viewport updated."
                     step_res.data = scroll_data
 
                 elif step.type == "extract_text":
@@ -533,36 +619,109 @@ try {{
         }}
     }}
 
-    // Generic Click with Cascading Fallbacks & Heuristics
+    // Antigravity-Style Autonomous DOM Element Discovery & Intent Matching
     let clicked = false;
-    const directLoc = page.locator('{raw_selector}').first();
-    if (await directLoc.count() > 0) {{
-        await directLoc.click({{ timeout: 8000 }});
-        clicked = true;
-    }} else {{
-        // Semantic selector cascades
+    let clickedDetails = null;
+
+    // 1. Intelligent Candidate Scanner (Inspects all interactive elements and matches by semantic intent)
+    const targetIntent = '{intent_text}'.toLowerCase();
+    try {{
+        const matched = await page.evaluate((intent) => {{
+            const candidates = Array.from(document.querySelectorAll('a, button, input[type="button"], input[type="submit"], [role="button"], [tabindex="0"], h2 a, h3 a, article a, .crayons-story__title a'));
+            
+            const words = intent.split(/\\s+/).filter(w => w.length > 2 && !['click', 'the', 'and', 'for', 'with', 'from', 'into', 'top', 'first'].includes(w));
+            
+            let bestEl = null;
+            let highestScore = 0;
+
+            for (const el of candidates) {{
+                const text = (el.innerText || el.textContent || '').toLowerCase().trim();
+                const aria = (el.getAttribute('aria-label') || '').toLowerCase();
+                const title = (el.getAttribute('title') || '').toLowerCase();
+                const href = (el.getAttribute('href') || '').toLowerCase();
+                const combined = `${{text}} ${{aria}} ${{title}} ${{href}}`;
+
+                let score = 0;
+                for (const w of words) {{
+                    if (combined.includes(w)) {{
+                        score += 10;
+                        if (text.includes(w)) score += 15;
+                    }}
+                }}
+
+                // Specific priority bonuses
+                if (intent.includes('download') && (combined.includes('download') || href.includes('.mp3') || href.includes('.zip'))) score += 30;
+                if (intent.includes('article') && (el.closest('article') || el.classList.contains('crayons-story__title') || tag === 'h2' || tag === 'h3')) score += 25;
+                if (intent.includes('search') && (combined.includes('search') || el.type === 'submit')) score += 25;
+                if (intent.includes('star') && (combined.includes('star') || aria.includes('star'))) score += 30;
+                if (intent.includes('submit') && (combined.includes('submit') || el.type === 'submit')) score += 30;
+
+                const rect = el.getBoundingClientRect();
+                if (rect.width === 0 || rect.height === 0) score = -100;
+
+                if (score > highestScore) {{
+                    highestScore = score;
+                    bestEl = el;
+                }}
+            }}
+
+            if (bestEl && highestScore > 5) {{
+                bestEl.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
+                const tag = bestEl.tagName.toLowerCase();
+                const label = (bestEl.innerText || bestEl.getAttribute('aria-label') || bestEl.getAttribute('href') || 'element').slice(0, 50).trim();
+                bestEl.click();
+                return {{ success: true, tag, label, score: highestScore }};
+            }}
+            return {{ success: false }};
+        }}, targetIntent);
+
+        if (matched && matched.success) {{
+            clicked = true;
+            clickedDetails = {{ type: 'semantic_match', tag: matched.tag, label: matched.label }};
+        }}
+    }} catch (evalErr) {{}}
+
+    // 2. Try Direct Selector if not yet clicked
+    if (!clicked && '{raw_selector}' && '{raw_selector}' !== 'button' && '{raw_selector}' !== 'a') {{
+        try {{
+            const directLoc = page.locator('{raw_selector}').first();
+            if (await directLoc.count() > 0) {{
+                await directLoc.scrollIntoViewIfNeeded({{ timeout: 2000 }}).catch(() => {{}});
+                await directLoc.click({{ timeout: 3500 }});
+                clicked = true;
+                clickedDetails = {{ type: 'direct_selector', selector: '{raw_selector}' }};
+            }}
+        }} catch (dErr) {{}}
+    }}
+
+    // 3. Fallback Selector Cascades
+    if (!clicked) {{
         const semanticFallbacks = [
+            'article h2 a, .crayons-story__title a, h2 a, article a',
+            'a[data-testid="result-title-a"], a.result__a',
+            'a[href*=".mp3"], a[download], a:has-text("Download"), button:has-text("Download"), .download-btn',
             'button[aria-label*="Star"], form[action*="star"] button',
-            'article.Box-row h2 a, h2 a, a[href*="/"].text-bold',
-            'article h2 a, a.storylink, .titleline > a',
-            'button:has-text("Star"), button:has-text("Submit"), button:has-text("Apply")',
-            'button[type="submit"], input[type="submit"]',
+            'button:has-text("Submit"), button[type="submit"], input[type="submit"]',
             'button, a'
         ];
         for (const fb of semanticFallbacks) {{
-            const fbLoc = page.locator(fb).first();
-            if (await fbLoc.count() > 0) {{
-                await fbLoc.click({{ timeout: 6000 }});
-                clicked = true;
-                break;
-            }}
+            try {{
+                const fbLoc = page.locator(fb).first();
+                if (await fbLoc.count() > 0) {{
+                    await fbLoc.scrollIntoViewIfNeeded({{ timeout: 2000 }}).catch(() => {{}});
+                    await fbLoc.click({{ timeout: 3000 }});
+                    clicked = true;
+                    clickedDetails = {{ type: 'fallback_cascade', selector: fb }};
+                    break;
+                }}
+            }} catch (fbErr) {{}}
         }}
     }}
 
     if (clicked) {{
-        await page.waitForLoadState('domcontentloaded', {{ timeout: 15000 }}).catch(() => {{}});
-        await page.waitForTimeout(1500);
-        console.log(JSON.stringify({{ status: 'success', clicked: '{raw_selector}', current_url: page.url() }}));
+        await page.waitForLoadState('domcontentloaded', {{ timeout: 6000 }}).catch(() => {{}});
+        await page.waitForTimeout(1000);
+        console.log(JSON.stringify({{ status: 'success', clicked: '{raw_selector}', details: clickedDetails, current_url: page.url(), page_title: await page.title() }}));
     }} else {{
         console.log(JSON.stringify({{ status: 'not_found', selector: '{raw_selector}' }}));
     }}
@@ -570,7 +729,7 @@ try {{
     console.log(JSON.stringify({{ status: 'error', message: err.message }}));
 }}
 """
-                    out = await adapter._run_cli(["--session", session_id, "browser", "run", "--stdin"], stdin_input=click_script, timeout=30)
+                    out = await adapter._run_cli(["--session", session_id, "browser", "run", "--stdin"], stdin_input=click_script, timeout=60)
                     click_data = _extract_json_from_webcmd(out) or {}
                     new_url = click_data.get("current_url")
                     if new_url:
@@ -585,6 +744,145 @@ try {{
                     else:
                         step_res.output_message = f"Attempted click on '{raw_selector}' ({click_data.get('status', 'not_found')})"
                     step_res.data = click_data
+
+                elif step.type == "fill":
+                    fields = step.params.get("fields", {})
+                    selector = step.params.get("selector", "")
+                    value = step.params.get("value", "")
+
+                    # Load user profile from Identity Vault for dynamic field substitution
+                    user_profile_data = {}
+                    try:
+                        p_path = Path(__file__).resolve().parent.parent.parent / "storage" / "user_profile.json"
+                        if p_path.exists():
+                            user_profile_data = json.loads(p_path.read_text())
+                    except Exception:
+                        pass
+
+                    full_name = user_profile_data.get("full_name", "Shlok Developer")
+                    email = user_profile_data.get("email", "shlok.dev@scout.ai")
+                    skills = ", ".join(user_profile_data.get("skills", ["Python", "TypeScript", "Next.js", "AI Agents"]))
+                    experience = user_profile_data.get("work_experience", "Software Engineering Intern at AI Labs (2025)")
+                    linkedin = user_profile_data.get("linkedin_url", "https://linkedin.com/in/shlok1729")
+                    univ = user_profile_data.get("university", "IIT Roorkee")
+
+                    # Handle {"selector": "...", "value": "..."} format
+                    if isinstance(fields, dict) and "selector" in fields and "value" in fields:
+                        fields = {fields["selector"]: fields["value"]}
+
+                    if not fields and selector and value:
+                        fields = {selector: value}
+                    elif not fields and not selector:
+                        # Extract search query or field intent from step title or description
+                        query_match = re.search(r"['\"]([^'\"]+)['\"]", f"{step.title} {step.description}")
+                        term = query_match.group(1) if query_match else step.title.replace("Search for", "").replace("Search", "").strip()
+                        fields = {"input[name='search_query'], input#search, input[type='search'], input[type='text']": term}
+
+                    # Resolve placeholder strings to real user profile values
+                    resolved_fields = {}
+                    for k, v in fields.items():
+                        v_str = str(v).strip()
+                        k_lower = f"{k} {step.title} {step.description}".lower()
+                        if any(term in k_lower for term in ["name", "full_name"]) and (not v_str or "extracted" in v_str.lower() or "name" in v_str.lower()):
+                            resolved_fields[k] = full_name
+                        elif any(term in k_lower for term in ["tech_stack", "stack", "skill"]) and (not v_str or "extracted" in v_str.lower() or "stack" in v_str.lower()):
+                            resolved_fields[k] = skills
+                        elif any(term in k_lower for term in ["exp", "experience", "work"]) and (not v_str or "extracted" in v_str.lower() or "experience" in v_str.lower()):
+                            resolved_fields[k] = experience
+                        elif any(term in k_lower for term in ["email", "mail"]) and (not v_str or "extracted" in v_str.lower() or "email" in v_str.lower()):
+                            resolved_fields[k] = email
+                        elif any(term in k_lower for term in ["college", "university", "school"]) and (not v_str or "extracted" in v_str.lower()):
+                            resolved_fields[k] = univ
+                        elif any(term in k_lower for term in ["linkedin"]) and (not v_str or "extracted" in v_str.lower()):
+                            resolved_fields[k] = linkedin
+                        else:
+                            resolved_fields[k] = v_str or full_name
+
+                    fill_script = f"""
+try {{
+    const fields = {json.dumps(resolved_fields)};
+    const filled = [];
+
+    for (const [sel, val] of Object.entries(fields)) {{
+        let inputLoc = page.locator(sel).first();
+        if (await inputLoc.count() === 0) {{
+            // Cascading semantic search for matching inputs or textareas
+            const selLower = sel.toLowerCase();
+            let fallbacks = [];
+            if (selLower.includes('name')) {{
+                fallbacks = ['input[name*="name" i]', 'input[placeholder*="name" i]', 'input[aria-label*="name" i]', 'input[type="text"]'];
+            }} else if (selLower.includes('tech') || selLower.includes('stack') || selLower.includes('skill')) {{
+                fallbacks = ['input[name*="skill" i]', 'input[name*="tech" i]', 'textarea[name*="tech" i]', 'input[placeholder*="stack" i]', 'textarea'];
+            }} else if (selLower.includes('exp')) {{
+                fallbacks = ['textarea[name*="exp" i]', 'input[name*="exp" i]', 'textarea[placeholder*="exp" i]', 'textarea'];
+            }} else if (selLower.includes('email')) {{
+                fallbacks = ['input[type="email"]', 'input[name*="email" i]', 'input[placeholder*="email" i]'];
+            }} else {{
+                fallbacks = [
+                    'input[name="search_query"]',
+                    'input#search',
+                    'yt-searchbox input',
+                    'input[placeholder*="Search" i]',
+                    'input[type="text"]',
+                    'textarea'
+                ];
+            }}
+
+            for (const fb of fallbacks) {{
+                const loc = page.locator(fb).first();
+                if (await loc.count() > 0) {{
+                    inputLoc = loc;
+                    break;
+                }}
+            }}
+        }}
+
+        if (await inputLoc.count() > 0) {{
+            await inputLoc.click();
+            // React & standard controlled input updater
+            await inputLoc.evaluate((el, value) => {{
+                el.focus();
+                const nativeSetter = Object.getOwnPropertyDescriptor(
+                    window.HTMLInputElement.prototype, 'value'
+                )?.set || Object.getOwnPropertyDescriptor(
+                    window.HTMLTextAreaElement.prototype, 'value'
+                )?.set;
+                if (nativeSetter) {{
+                    nativeSetter.call(el, value);
+                }} else {{
+                    el.value = value;
+                }}
+                el.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                el.dispatchEvent(new Event('change', {{ bubbles: true }}));
+            }}, val);
+            await inputLoc.fill(val);
+            await page.waitForTimeout(400);
+            filled.push({{ selector: sel, value: val, status: 'filled' }});
+        }} else {{
+            filled.push({{ selector: sel, value: val, status: 'not_found' }});
+        }}
+    }}
+
+    await page.waitForLoadState('domcontentloaded', {{ timeout: 15000 }}).catch(() => {{}});
+    await page.waitForTimeout(1500);
+    console.log(JSON.stringify({{ status: 'success', filled, current_url: page.url() }}));
+}} catch (err) {{
+    console.log(JSON.stringify({{ status: 'error', message: err.message }}));
+}}
+"""
+                    out = await adapter._run_cli(["--session", session_id, "browser", "run", "--stdin"], stdin_input=fill_script, timeout=60)
+                    fill_data = _extract_json_from_webcmd(out) or {}
+                    new_url = fill_data.get("current_url")
+                    if new_url:
+                        current_url = new_url
+                    
+                    filled_items = fill_data.get("filled", [])
+                    succ_items = [f"'{f.get('value')}'" for f in filled_items if f.get("status") == "filled"]
+                    if succ_items:
+                        step_res.output_message = f"Filled {', '.join(succ_items)} into form fields."
+                    else:
+                        step_res.output_message = f"Attempted form fill on {len(resolved_fields)} fields."
+                    step_res.data = fill_data
 
                 elif step.type == "export":
                     summary_msg = f"Exported {len(result.extracted_items)} items, {len(result.screenshots)} screenshots"
