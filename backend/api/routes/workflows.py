@@ -30,7 +30,39 @@ _WORKFLOWS_STORAGE.parent.mkdir(parents=True, exist_ok=True)
 
 def resolve_authoritative_url(prompt: str) -> str:
     """Infer the best live, real-world authoritative URL based on user intent."""
-    p = prompt.lower()
+    p = prompt.lower().strip()
+
+    # Spotify / Music / Audio Players
+    if "spotify" in p or (any(k in p for k in ("play", "song", "music", "track", "listen")) and not any(k in p for k in ("youtube", "video", "market", "stock"))):
+        # Extract song or artist query by stripping intent stopwords
+        clean_track = re.sub(r'\b(open|spotify|and|play|the|song|track|music|listen|to|please|oye|for|by|in)\b', ' ', p, flags=re.IGNORECASE)
+        clean_track = re.sub(r'[^\w\s]', '', clean_track).strip()
+        if clean_track:
+            encoded_track = urllib.parse.quote_plus(clean_track)
+            return f"https://open.spotify.com/search/{encoded_track}"
+        return "https://open.spotify.com"
+
+    # YouTube / Video
+    if any(k in p for k in ("youtube", "video", "trailer", "channel", "stream")):
+        clean_video = re.sub(r'\b(open|youtube|and|watch|the|video|play|search|for|find)\b', ' ', p, flags=re.IGNORECASE)
+        clean_video = re.sub(r'[^\w\s]', '', clean_video).strip()
+        if clean_video:
+            encoded_vid = urllib.parse.quote_plus(clean_video)
+            return f"https://www.youtube.com/results?search_query={encoded_vid}"
+        return "https://www.youtube.com"
+
+    # Wikipedia / Research
+    if any(k in p for k in ("wikipedia", "wiki", "encyclopedia")):
+        clean_wiki = re.sub(r'\b(search|wikipedia|wiki|for|look|up|on|about)\b', ' ', p, flags=re.IGNORECASE).strip()
+        encoded_wiki = urllib.parse.quote_plus(clean_wiki)
+        return f"https://en.wikipedia.org/wiki/Special:Search?search={encoded_wiki}"
+
+    # Reddit / Community
+    if "reddit" in p:
+        clean_red = re.sub(r'\b(open|reddit|and|search|for|subreddit|on)\b', ' ', p, flags=re.IGNORECASE).strip()
+        if clean_red:
+            return f"https://www.reddit.com/search/?q={urllib.parse.quote_plus(clean_red)}"
+        return "https://www.reddit.com"
 
     # AI / Tech / Blogs
     if any(k in p for k in ("ai blog", "ai news", "artificial intelligence", "llm", "gpt", "agent")):
@@ -64,7 +96,6 @@ def resolve_authoritative_url(prompt: str) -> str:
     if any(k in p for k in ("job", "hiring", "career")):
         return "https://news.ycombinator.com/jobs"
 
-    # Research / Science
     if any(k in p for k in ("paper", "arxiv", "research", "science")):
         return "https://arxiv.org/list/cs.AI/recent"
 
@@ -259,19 +290,44 @@ async def synthesize_workflow(req: SynthesizeRequest):
 
     system_prompt = f"""You are Scout's Autonomous Workflow Compiler. Convert the user's natural language request into a sequence of executable visual action blocks.
 
-CRITICAL RULES:
-1. NEVER output 'example.com', 'your-site.com', or generic placeholders for the 'navigate' URL.
-2. If the user does NOT explicitly specify a URL in their prompt, you MUST autonomously choose the best REAL-WORLD, LIVE, HIGH-TRAFFIC URL matching their topic (e.g. https://news.ycombinator.com, https://techcrunch.com/category/artificial-intelligence/, https://finance.yahoo.com/trending-tickers, https://unstop.com/hackathons, https://github.com/trending, https://www.producthunt.com).
-3. If the user asks to inspect details, open articles, or snapshot READMEs / subpages:
-   - Include a 'click' step targeting the item (e.g. selector: "article.Box-row h2 a, h2 a, a[href*='/'].text-bold" for GitHub repos, or "article h2 a, a" for blog articles).
-   - Follow it with a 'scroll' step and then a 'screenshot' step.
-4. If the user asks to copy, scrape, or extract text/content (like "copy the readme", "extract article content", "get markdown"):
-   - Include an 'extract_text' step (e.g. params: {{"target": "readme", "label": "Repository README"}}).
-5. Recommended default target URL for this request: {smart_seed_url}
+CRITICAL PIPELINE RULES:
+1. ALWAYS generate a complete 4 to 5 step end-to-end workflow pipeline. NEVER generate only 1 or 2 steps.
+2. NEVER output 'example.com', 'your-site.com', or generic placeholders for the 'navigate' URL.
+3. Recommended target URL: {smart_seed_url}
+
+ACTION SEQUENCING PATTERNS:
+- Pattern A: MEDIA & PLAYBACK (Spotify, YouTube, Podcasts, Music)
+  1. 'navigate': target URL (e.g. {smart_seed_url})
+  2. 'scroll': params: {{"scroll_times": 1, "delay_ms": 1000}} (wait and reveal track list)
+  3. 'click': title: "Play Top Result Track", params: {{"selector": "button[data-testid='play-button'], [data-testid='tracklist-row'] button, button[aria-label*='Play' i], a#video-title"}}
+  4. 'screenshot': params: {{"label": "playback_proof"}}
+  5. 'export': params: {{"notify": true}}
+
+- Pattern B: SEARCH ENGINE & LINK FOLLOWING (Search DuckDuckGo/Google -> Open Target Result)
+  1. 'navigate': search engine query URL
+  2. 'click': title: "Open Top Search Result Link", params: {{"selector": "a[data-testid='result-title-a'], a.result__a, h2 a, h3 a"}}
+  3. 'scroll': params: {{"scroll_times": 2, "delay_ms": 1000}}
+  4. 'screenshot' or 'extract_text': capture destination page proof or text
+  5. 'export': params: {{"notify": true}}
+
+- Pattern C: CONTENT DISCOVERY & FILTERING (Blogs, News, Repos, Portals)
+  1. 'navigate': target URL
+  2. 'scroll': params: {{"scroll_times": 3, "delay_ms": 1200}}
+  3. 'ai_filter': params: {{"criteria": prompt, "limit": 3}}
+  4. 'screenshot': params: {{"label": "feed_snapshot"}}
+  5. 'export': params: {{"notify": true}}
+
+- Pattern D: GITHUB / REPO INSPECTION & STARRING
+  1. 'navigate': GitHub target URL
+  2. 'scroll': params: {{"scroll_times": 2, "delay_ms": 1000}}
+  3. 'click': title: "Star Top Repository", params: {{"selector": "button[aria-label*='Star']"}}
+  4. 'extract_text': params: {{"target": "readme", "label": "Repository README"}}
+  5. 'screenshot': params: {{"label": "repository_proof"}}
+  6. 'export': params: {{"notify": true}}
 
 Supported action block types:
 - "navigate": {{"url": "https://..."}}
-- "scroll": {{"scroll_times": 3, "delay_ms": 1000, "target": ""}}
+- "scroll": {{"scroll_times": 2, "delay_ms": 1000, "target": ""}}
 - "click": {{"selector": "css_selector_or_tag"}}
 - "extract_text": {{"target": "readme" | "article" | "auto", "label": "Description"}}
 - "ai_filter": {{"criteria": "What to extract/filter", "limit": 3}}

@@ -277,7 +277,160 @@ def _parse_target_indices(text: str, total_count: int = 10) -> list[int]:
         else:
             indices = [0]
 
-    return sorted(list(set(indices)))
+async def _ai_perceive_and_actuate_dom(
+    adapter: RealWebcmdAdapter,
+    session_id: str,
+    intent_goal: str,
+    raw_selector: str = "",
+    action_type: str = "click",
+) -> dict:
+    """Pause, snapshot the live rendered DOM accessibility/interactive tree, send to gpt-4o-mini for perceptual reasoning, and actuate the target element."""
+    settings = get_settings()
+
+    # 1. Capture live rendered DOM state from browser
+    dom_inspect_script = """
+const elements = [];
+const interactive = Array.from(document.querySelectorAll(
+    'a, button, input, select, textarea, [role="button"], [role="row"], [data-testid], [tabindex="0"], video, audio, h1, h2, h3, article, .Box-row, .crayons-story__title'
+));
+const nl = String.fromCharCode(10);
+interactive.forEach((el) => {
+    if (elements.length >= 35) return;
+    try {
+        const rect = el.getBoundingClientRect();
+        const style = window.getComputedStyle(el);
+        if (rect.width <= 0 || rect.height <= 0 || style.display === 'none' || style.visibility === 'hidden') return;
+
+        const text = (el.innerText || el.textContent || '').split(nl)[0].trim().slice(0, 80);
+        const aria = (el.getAttribute('aria-label') || el.getAttribute('title') || '').slice(0, 60);
+        const testId = (el.getAttribute('data-testid') || '').slice(0, 40);
+        const href = el.tagName === 'A' ? (el.getAttribute('href') || '') : '';
+        const role = el.getAttribute('role') || '';
+        const tag = el.tagName.toLowerCase();
+
+        if (text || aria || testId || href || tag === 'button' || tag === 'input') {
+            elements.push({
+                index: elements.length,
+                tag,
+                text,
+                aria,
+                testId,
+                href: href.slice(0, 80),
+                role,
+            });
+        }
+    } catch (e) {}
+});
+
+console.log(JSON.stringify({
+    status: 'success',
+    title: document.title,
+    url: window.location.href,
+    elementsCount: elements.length,
+    elements: elements
+}));
+"""
+    inspect_out = await adapter._run_cli(["--session", session_id, "browser", "run", "--stdin"], stdin_input=dom_inspect_script, timeout=30)
+    dom_data = _extract_json_from_webcmd(inspect_out) or {}
+    elements = dom_data.get("elements", [])
+    page_title = dom_data.get("title", "")
+    page_url = dom_data.get("url", "")
+
+    ai_decision = None
+    if settings.openai_api_key and elements:
+        try:
+            from openai import AsyncOpenAI
+            client = AsyncOpenAI(api_key=settings.openai_api_key, timeout=12.0)
+            elements_text = "\n".join([
+                f"[{el['index']}] <{el['tag']}> text: '{el['text']}' aria: '{el['aria']}' testId: '{el['testId']}' href: '{el['href']}'"
+                for el in elements[:30]
+            ])
+            perception_prompt = f"""You are Antigravity's Autonomous DOM Perception Agent.
+Your task is to inspect the live rendered DOM elements on the screen and pick the single best element index to fulfill the user's action goal.
+
+Current Page URL: {page_url}
+Page Title: {page_title}
+Action Goal: {intent_goal}
+
+LIVE INTERACTIVE DOM ELEMENTS:
+{elements_text}
+
+Respond in JSON ONLY matching this format:
+{{
+  "element_index": <int index of best element from the list above>,
+  "reasoning": "<1 sentence explaining why this element matches the goal>",
+  "action": "click" | "play"
+}}"""
+            ai_res = await client.chat.completions.create(
+                model=settings.openai_model,
+                temperature=0.1,
+                response_format={"type": "json_object"},
+                messages=[
+                    {"role": "system", "content": "You are a precise browser DOM perception engine. Select the optimal element index matching the user intent."},
+                    {"role": "user", "content": perception_prompt},
+                ],
+            )
+            raw = ai_res.choices[0].message.content or "{}"
+            ai_decision = json.loads(raw)
+        except Exception as exc:
+            logger.warning("AI DOM Perception note: %s — falling back to semantic matcher", exc)
+
+    chosen_idx = 0
+    reasoning = f"Matched intent: '{intent_goal}' on {len(elements)} discovered DOM elements"
+    if ai_decision and "element_index" in ai_decision:
+        chosen_idx = int(ai_decision["element_index"])
+        reasoning = ai_decision.get("reasoning", reasoning)
+
+    # 2. Actuate the chosen element in the live browser
+    actuate_script = f"""
+try {{
+    const chosenIdx = {chosen_idx};
+    const interactive = Array.from(document.querySelectorAll(
+        'a, button, input, select, textarea, [role="button"], [role="row"], [data-testid], [tabindex="0"], video, audio, h1, h2, h3, article, .Box-row, .crayons-story__title'
+    )).filter(el => {{
+        const r = el.getBoundingClientRect();
+        const s = window.getComputedStyle(el);
+        return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden';
+    }});
+
+    let targetEl = (chosenIdx >= 0 && chosenIdx < interactive.length) ? interactive[chosenIdx] : null;
+
+    if (!targetEl && '{raw_selector}') {{
+        targetEl = document.querySelector('{raw_selector}');
+    }}
+    if (!targetEl) {{
+        targetEl = document.querySelector('button[data-testid*="play"], [aria-label*="Play" i], a[data-testid="result-title-a"], a.result__a, h2 a, button, a');
+    }}
+
+    if (targetEl) {{
+        targetEl.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
+        const tag = targetEl.tagName.toLowerCase();
+        const label = (targetEl.innerText || targetEl.getAttribute('aria-label') || targetEl.getAttribute('href') || 'element').slice(0, 60).trim();
+        targetEl.click();
+        
+        await page.waitForLoadState('domcontentloaded', {{ timeout: 8000 }}).catch(() => {{}});
+        await page.waitForTimeout(1500);
+
+        console.log(JSON.stringify({{
+            status: 'success',
+            tag,
+            label,
+            element_index: chosenIdx,
+            current_url: page.url(),
+            page_title: await page.title()
+        }}));
+    }} else {{
+        console.log(JSON.stringify({{ status: 'not_found', element_index: chosenIdx }}));
+    }}
+}} catch (err) {{
+    console.log(JSON.stringify({{ status: 'error', message: err.message }}));
+}}
+"""
+    act_out = await adapter._run_cli(["--session", session_id, "browser", "run", "--stdin"], stdin_input=actuate_script, timeout=40)
+    act_data = _extract_json_from_webcmd(act_out) or {}
+    act_data["reasoning"] = reasoning
+    act_data["elementsCount"] = len(elements)
+    return act_data
 
 
 async def execute_visual_workflow(
@@ -556,14 +709,18 @@ console.log(JSON.stringify({{ status: 'success', captured: '{filename}' }}));
                     intent_text = f"{workflow.name} {workflow.description} {step.title} {step.description} {raw_selector}".lower()
                     is_star_action = "star" in intent_text
                     is_unstar_action = "unstar" in intent_text
+                    is_play_action = any(k in intent_text for k in ("play", "listen", "track", "song", "audio", "music", "spotify", "youtube"))
                     target_indices = _parse_target_indices(intent_text)
 
                     click_script = f"""
 try {{
     const isStar = {str(is_star_action).lower()};
     const isUnstar = {str(is_unstar_action).lower()};
+    const isPlay = {str(is_play_action).lower()};
     const targetIndices = {json.dumps(target_indices)};
+    const targetIntent = {json.dumps(intent_text)};
 
+    // A. Specialized GitHub Star/Unstar Handler
     if (isStar || isUnstar) {{
         const starResult = await page.evaluate((args) => {{
             const rows = document.querySelectorAll('article.Box-row, .repo-list-item, .Box-row');
@@ -619,112 +776,104 @@ try {{
         }}
     }}
 
-    // Antigravity-Style Autonomous DOM Element Discovery & Intent Matching
-    let clicked = false;
-    let clickedDetails = null;
+    // B. Search Engine Result Link Navigation (e.g. DuckDuckGo, Google, Bing)
+    const hostname = await page.evaluate(() => window.location.hostname);
+    if (hostname.includes('duckduckgo.com') || hostname.includes('google.com') || hostname.includes('bing.com')) {{
+        const searchLinkResult = await page.evaluate((intent) => {{
+            const results = Array.from(document.querySelectorAll('a[data-testid="result-title-a"], a.result__a, h2 a, h3 a, div.g a, [data-testid="result"] a'));
+            if (results.length === 0) return {{ success: false }};
 
-    // 1. Intelligent Candidate Scanner (Inspects all interactive elements and matches by semantic intent)
-    const targetIntent = '{intent_text}'.toLowerCase();
-    try {{
-        const matched = await page.evaluate((intent) => {{
-            const candidates = Array.from(document.querySelectorAll('a, button, input[type="button"], input[type="submit"], [role="button"], [tabindex="0"], h2 a, h3 a, article a, .crayons-story__title a'));
-            
-            const words = intent.split(/\\s+/).filter(w => w.length > 2 && !['click', 'the', 'and', 'for', 'with', 'from', 'into', 'top', 'first'].includes(w));
-            
-            let bestEl = null;
-            let highestScore = 0;
-
-            for (const el of candidates) {{
-                const text = (el.innerText || el.textContent || '').toLowerCase().trim();
-                const aria = (el.getAttribute('aria-label') || '').toLowerCase();
-                const title = (el.getAttribute('title') || '').toLowerCase();
-                const href = (el.getAttribute('href') || '').toLowerCase();
-                const combined = `${{text}} ${{aria}} ${{title}} ${{href}}`;
-
-                let score = 0;
-                for (const w of words) {{
-                    if (combined.includes(w)) {{
-                        score += 10;
-                        if (text.includes(w)) score += 15;
-                    }}
-                }}
-
-                // Specific priority bonuses
-                if (intent.includes('download') && (combined.includes('download') || href.includes('.mp3') || href.includes('.zip'))) score += 30;
-                if (intent.includes('article') && (el.closest('article') || el.classList.contains('crayons-story__title') || tag === 'h2' || tag === 'h3')) score += 25;
-                if (intent.includes('search') && (combined.includes('search') || el.type === 'submit')) score += 25;
-                if (intent.includes('star') && (combined.includes('star') || aria.includes('star'))) score += 30;
-                if (intent.includes('submit') && (combined.includes('submit') || el.type === 'submit')) score += 30;
-
-                const rect = el.getBoundingClientRect();
-                if (rect.width === 0 || rect.height === 0) score = -100;
-
-                if (score > highestScore) {{
-                    highestScore = score;
-                    bestEl = el;
-                }}
+            // If intent mentions a specific domain (like spotify, github, youtube), prioritize matching result
+            let targetResult = null;
+            if (intent.includes('spotify')) {{
+                targetResult = results.find(a => (a.href || '').includes('spotify.com'));
+            }} else if (intent.includes('github')) {{
+                targetResult = results.find(a => (a.href || '').includes('github.com'));
+            }} else if (intent.includes('youtube')) {{
+                targetResult = results.find(a => (a.href || '').includes('youtube.com'));
             }}
+            if (!targetResult) targetResult = results[0];
 
-            if (bestEl && highestScore > 5) {{
-                bestEl.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
-                const tag = bestEl.tagName.toLowerCase();
-                const label = (bestEl.innerText || bestEl.getAttribute('aria-label') || bestEl.getAttribute('href') || 'element').slice(0, 50).trim();
-                bestEl.click();
-                return {{ success: true, tag, label, score: highestScore }};
+            if (targetResult) {{
+                const title = targetResult.innerText || targetResult.textContent || '';
+                const href = targetResult.href;
+                targetResult.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
+                targetResult.click();
+                return {{ success: true, title, href, is_search_nav: true }};
             }}
             return {{ success: false }};
         }}, targetIntent);
 
-        if (matched && matched.success) {{
-            clicked = true;
-            clickedDetails = {{ type: 'semantic_match', tag: matched.tag, label: matched.label }};
+        if (searchLinkResult && searchLinkResult.success) {{
+            await page.waitForLoadState('domcontentloaded', {{ timeout: 10000 }}).catch(() => {{}});
+            await page.waitForTimeout(2000);
+            console.log(JSON.stringify({{
+                status: 'success',
+                action: 'search_nav',
+                details: searchLinkResult,
+                current_url: page.url(),
+                page_title: await page.title()
+            }}));
+            return;
         }}
-    }} catch (evalErr) {{}}
+    }}
 
-    // 2. Try Direct Selector if not yet clicked
-    if (!clicked && '{raw_selector}' && '{raw_selector}' !== 'button' && '{raw_selector}' !== 'a') {{
-        try {{
-            const directLoc = page.locator('{raw_selector}').first();
-            if (await directLoc.count() > 0) {{
-                await directLoc.scrollIntoViewIfNeeded({{ timeout: 2000 }}).catch(() => {{}});
-                await directLoc.click({{ timeout: 3500 }});
-                clicked = true;
-                clickedDetails = {{ type: 'direct_selector', selector: '{raw_selector}' }};
+    // C. Media & Spotify Play Control Actuator
+    if (isPlay || hostname.includes('spotify.com') || hostname.includes('youtube.com')) {{
+        const playResult = await page.evaluate(() => {{
+            // 1. Spotify Web Player Play Buttons & Tracklist rows
+            const spotifyPlayBtn = document.querySelector('button[data-testid="play-button"], button[data-testid="action-bar-row-play-button"], button[aria-label*="Play" i], [data-testid="top-result-card"] button, [data-testid="tracklist-row"] button');
+            if (spotifyPlayBtn) {{
+                spotifyPlayBtn.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
+                spotifyPlayBtn.click();
+                return {{ success: true, player: 'spotify', element: 'play_button', label: spotifyPlayBtn.getAttribute('aria-label') || 'Play' }};
             }}
-        }} catch (dErr) {{}}
-    }}
 
-    // 3. Fallback Selector Cascades
-    if (!clicked) {{
-        const semanticFallbacks = [
-            'article h2 a, .crayons-story__title a, h2 a, article a',
-            'a[data-testid="result-title-a"], a.result__a',
-            'a[href*=".mp3"], a[download], a:has-text("Download"), button:has-text("Download"), .download-btn',
-            'button[aria-label*="Star"], form[action*="star"] button',
-            'button:has-text("Submit"), button[type="submit"], input[type="submit"]',
-            'button, a'
-        ];
-        for (const fb of semanticFallbacks) {{
-            try {{
-                const fbLoc = page.locator(fb).first();
-                if (await fbLoc.count() > 0) {{
-                    await fbLoc.scrollIntoViewIfNeeded({{ timeout: 2000 }}).catch(() => {{}});
-                    await fbLoc.click({{ timeout: 3000 }});
-                    clicked = true;
-                    clickedDetails = {{ type: 'fallback_cascade', selector: fb }};
-                    break;
-                }}
-            }} catch (fbErr) {{}}
+            // 2. Click top track row if play button not directly exposed
+            const trackRow = document.querySelector('[data-testid="tracklist-row"], [role="row"], div[role="row"]');
+            if (trackRow) {{
+                trackRow.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
+                trackRow.click();
+                return {{ success: true, player: 'spotify', element: 'track_row', text: trackRow.innerText ? trackRow.innerText.slice(0, 60) : 'track' }};
+            }}
+
+            // 3. YouTube Video Link / Player
+            const ytVideo = document.querySelector('ytd-video-renderer a#video-title, a#thumbnail, button.ytp-play-button');
+            if (ytVideo) {{
+                ytVideo.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
+                ytVideo.click();
+                return {{ success: true, player: 'youtube', element: 'video', text: ytVideo.getAttribute('title') || ytVideo.innerText || 'video' }};
+            }}
+
+            // 4. HTML5 Audio / Video Elements
+            const mediaEl = document.querySelector('audio, video');
+            if (mediaEl && mediaEl.play) {{
+                mediaEl.play();
+                return {{ success: true, player: 'html5_media', element: mediaEl.tagName.toLowerCase() }};
+            }}
+
+            return {{ success: false }};
+        }});
+
+        if (playResult && playResult.success) {{
+            await page.waitForTimeout(2000);
+            console.log(JSON.stringify({{
+                status: 'success',
+                action: 'media_play',
+                details: playResult,
+                current_url: page.url(),
+                page_title: await page.title()
+            }}));
+            return;
         }}
     }}
 
-    if (clicked) {{
-        await page.waitForLoadState('domcontentloaded', {{ timeout: 6000 }}).catch(() => {{}});
-        await page.waitForTimeout(1000);
-        console.log(JSON.stringify({{ status: 'success', clicked: '{raw_selector}', details: clickedDetails, current_url: page.url(), page_title: await page.title() }}));
-    }} else {{
-        console.log(JSON.stringify({{ status: 'not_found', selector: '{raw_selector}' }}));
-    }}
+    // D. Antigravity-Style AI DOM Perception & Actuation Loop
+    const domActResult = await page.evaluate(() => ({{
+        url: window.location.href,
+        title: document.title,
+    }}));
+    console.log(JSON.stringify({{ status: 'perception_needed', current_url: domActResult.url, page_title: domActResult.title }}));
 }} catch (err) {{
     console.log(JSON.stringify({{ status: 'error', message: err.message }}));
 }}
@@ -739,6 +888,20 @@ try {{
                     if clicked_items:
                         action_summaries = [f"{item.get('repo', 'Item')}: {item.get('action', 'done')}" for item in clicked_items]
                         step_res.output_message = f"Executed actions on {len(clicked_items)} items: {', '.join(action_summaries[:3])}"
+                    elif click_data.get("action") == "media_play":
+                        step_res.output_message = f"Initiated playback: {click_data.get('details', {}).get('element', 'media')} on {click_data.get('details', {}).get('player', 'player')}."
+                    elif click_data.get("action") == "search_nav":
+                        step_res.output_message = f"Opened search result: '{click_data.get('details', {}).get('title', 'link')}' -> {current_url}"
+                    elif click_data.get("status") == "perception_needed" or click_data.get("status") == "not_found":
+                        # Run full AI DOM Perception & Actuation Loop
+                        ai_dom_res = await _ai_perceive_and_actuate_dom(adapter, session_id, intent_text, raw_selector)
+                        if ai_dom_res.get("status") == "success":
+                            current_url = ai_dom_res.get("current_url", current_url)
+                            step_res.output_message = f"🧠 AI DOM Perception: {ai_dom_res.get('reasoning')} -> Clicked <{ai_dom_res.get('tag')}> '{ai_dom_res.get('label')}'"
+                        else:
+                            step_res.output_message = f"Inspected {ai_dom_res.get('elementsCount', 0)} DOM elements — {ai_dom_res.get('reasoning')}"
+                        step_res.data = ai_dom_res
+                        continue
                     elif click_data.get("status") == "success":
                         step_res.output_message = f"Clicked target element — Navigated to: {current_url or 'Target Page'}"
                     else:
