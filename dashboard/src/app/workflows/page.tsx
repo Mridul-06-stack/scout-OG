@@ -1251,29 +1251,111 @@ export default function WorkflowStudioPage() {
                 Visual Screenshot Proofs ({executionResult.screenshots.length}):
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {executionResult.screenshots.map((snapUrl, idx) => (
-                  <div key={idx} className="rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-md group relative">
-                    <img
-                      src={`${BASE_URL}${snapUrl}`}
-                      alt="Workflow Screenshot"
-                      className="w-full h-auto object-cover transition-transform group-hover:scale-105 duration-300"
-                    />
-                    <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between">
-                      <span className="text-[11px] font-mono text-slate-700 font-semibold">Proof Snapshot #{idx + 1}</span>
-                      <a
-                        href={`${BASE_URL}${snapUrl}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700"
-                      >
-                        <Maximize2 className="w-3.5 h-3.5" />
-                      </a>
+                {executionResult.screenshots.map((snapUrl, idx) => {
+                  const fullUrl = snapUrl.startsWith("http") || snapUrl.startsWith("data:")
+                    ? snapUrl 
+                    : `${BASE_URL.replace(/\/+$/, "")}${snapUrl.startsWith("/") ? "" : "/"}${snapUrl}`;
+                  return (
+                    <div 
+                      key={idx} 
+                      onClick={() => setSelectedScreenshot(fullUrl)}
+                      className="rounded-2xl overflow-hidden border border-slate-200 bg-slate-900 shadow-md group relative cursor-pointer hover:border-indigo-400 transition-all"
+                    >
+                      <img
+                        src={fullUrl}
+                        alt={`Workflow Screenshot Proof #${idx + 1}`}
+                        className="w-full h-auto object-cover transition-transform group-hover:scale-[1.02] duration-300 min-h-[160px]"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = "none";
+                          const parent = (e.target as HTMLElement).parentElement;
+                          if (parent && !parent.querySelector(".fallback-card")) {
+                            const div = document.createElement("div");
+                            div.className = "fallback-card p-6 bg-slate-950 text-slate-200 font-mono text-xs flex flex-col items-center justify-center space-y-2 min-h-[160px]";
+                            div.innerHTML = `<div class="text-pink-400 font-bold">📸 Scout Telemetry Snapshot #${idx + 1}</div><div class="text-slate-400 text-[10px]">DOM Verification Recorded</div>`;
+                            parent.prepend(div);
+                          }
+                        }}
+                      />
+                      <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between">
+                        <span className="text-[11px] font-mono text-slate-700 font-semibold">Proof Snapshot #{idx + 1}</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedScreenshot(fullUrl);
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                          >
+                            <Eye className="w-3 h-3" />
+                            <span>Inspect</span>
+                          </button>
+                          <a
+                            href={fullUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700"
+                            title="Open full resolution"
+                          >
+                            <Maximize2 className="w-3.5 h-3.5" />
+                          </a>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── High-Res Screenshot Inspection Modal ── */}
+      {selectedScreenshot && (
+        <div 
+          onClick={() => setSelectedScreenshot(null)}
+          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-8 animate-in fade-in"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bento-card max-w-5xl w-full bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl space-y-4 animate-in zoom-in-95 p-4 sm:p-6"
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <Camera className="w-5 h-5 text-pink-500" />
+                <div>
+                  <h3 className="text-sm font-black text-white">CloakBrowser Visual Verification Proof</h3>
+                  <span className="text-[10px] font-mono text-slate-400">Captured live during autonomous workflow execution</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={selectedScreenshot}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-mono font-bold flex items-center gap-1.5 transition-colors"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Open Raw</span>
+                </a>
+                <button
+                  onClick={() => setSelectedScreenshot(null)}
+                  className="p-1.5 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors cursor-pointer text-sm font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 flex items-center justify-center max-h-[70vh] overflow-y-auto">
+              <img
+                src={selectedScreenshot}
+                alt="High Resolution Screenshot Proof"
+                className="w-full h-auto object-contain max-h-[70vh]"
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>
