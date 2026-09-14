@@ -9,7 +9,11 @@ import {
   OpportunityStatus,
 } from "./types";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+const BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1"
+    ? "https://scout-og.onrender.com"
+    : "http://127.0.0.1:8000");
 
 export async function fetchOpportunities(params?: {
   vertical?: string;
