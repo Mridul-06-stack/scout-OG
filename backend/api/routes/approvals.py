@@ -54,6 +54,20 @@ async def reject_action(approval_id: str):
     return {"error": "Approval not found or already resolved"}
 
 
+class DecisionRequest(BaseModel):
+    decision: str = "approved"  # approved or rejected
+    notes: str = ""
+
+
+@router.post("/approvals/{approval_id}/decide")
+async def decide_action(approval_id: str, body: DecisionRequest):
+    """Decide on a pending write action."""
+    if body.decision.lower() in ("approved", "accept", "yes"):
+        return await approve_action(approval_id)
+    else:
+        return await reject_action(approval_id)
+
+
 @router.post("/approvals/simulate")
 async def simulate_write_action(
     action: str = "apply",

@@ -91,14 +91,34 @@ async def get_opportunity(opp_id: str):
     for opp in all_opportunities:
         if opp.id == opp_id:
             return opp.model_dump(mode="json")
+    
+    from storage.db import load_opportunity_by_id
+    opp_db = load_opportunity_by_id(opp_id)
+    if opp_db:
+        return opp_db
     return {"error": "Not found"}, 404
 
 
 @router.patch("/opportunities/{opp_id}/status")
+@router.patch("/opportunities/{opp_id}")
+@router.put("/opportunities/{opp_id}")
 async def update_status(opp_id: str, body: StatusUpdate):
     """Update the lifecycle status of an opportunity."""
+    status_str = body.status.value if hasattr(body.status, "value") else str(body.status)
+    
+    # Update in-memory
+    found = False
     for opp in all_opportunities:
         if opp.id == opp_id:
             opp.status = body.status
-            return {"id": opp_id, "status": opp.status.value}
+            found = True
+            break
+            
+    # Update SQLite database
+    from storage.db import update_opportunity_status, load_opportunity_by_id
+    db_updated = update_opportunity_status(opp_id, status_str)
+    
+    if found or db_updated:
+        return {"id": opp_id, "status": status_str}
+        
     return {"error": "Not found"}, 404

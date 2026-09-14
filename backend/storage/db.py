@@ -154,6 +154,30 @@ def load_opportunities(vertical: str | None = None, limit: int = 100) -> list[di
     return results
 
 
+def load_opportunity_by_id(opp_id: str) -> dict[str, Any] | None:
+    """Load a single opportunity by ID from SQLite."""
+    with get_connection() as conn:
+        cursor = conn.execute("SELECT * FROM opportunities WHERE id = ?", (opp_id,))
+        row = cursor.fetchone()
+        if row:
+            d = dict(row)
+            d["tags"] = json.loads(d.get("tags") or "[]")
+            d["raw_fields"] = json.loads(d.get("raw_fields") or "{}")
+            return d
+    return None
+
+
+def update_opportunity_status(opp_id: str, status: str) -> bool:
+    """Update status of an opportunity in SQLite."""
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "UPDATE opportunities SET status = ?, last_seen_at = ? WHERE id = ?",
+            (status, datetime.utcnow().isoformat(), opp_id)
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
 def save_pipeline_run(run: dict[str, Any]) -> None:
     """Persist pipeline run in SQLite."""
     with get_connection() as conn:
