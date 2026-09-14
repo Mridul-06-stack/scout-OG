@@ -30,17 +30,22 @@ def get_adapter() -> WebcmdAdapterBase:
     if _adapter_instance is not None:
         return _adapter_instance
 
+    import shutil
     settings = get_settings()
-    if settings.webcmd_mode == "real":
+    if settings.webcmd_mode == "real" and shutil.which("webcmd") is not None:
         from core.webcmd_adapter.real_adapter import RealWebcmdAdapter
         _adapter_instance = RealWebcmdAdapter()
         logger.info("Using REAL webcmd adapter")
     else:
         from core.webcmd_adapter.mock_adapter import MockWebcmdAdapter
         _adapter_instance = MockWebcmdAdapter()
-        logger.info("Using MOCK webcmd adapter")
+        if settings.webcmd_mode == "real":
+            logger.warning("webcmd CLI not found on system PATH — gracefully using MockWebcmdAdapter")
+        else:
+            logger.info("Using MOCK webcmd adapter")
 
     return _adapter_instance
+
 
 
 async def explore_source(source: SourceCandidate) -> LearnedWorkflow:
