@@ -12,7 +12,7 @@ router = APIRouter(tags=["opportunities"])
 
 
 class StatusUpdate(BaseModel):
-    status: OpportunityStatus
+    status: str
 
 
 @router.get("/opportunities")

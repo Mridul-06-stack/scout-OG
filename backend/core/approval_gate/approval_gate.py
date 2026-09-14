@@ -224,7 +224,7 @@ async def fill_and_submit_form(
         snap_url = _generate_mock_screenshot("form_prefill_proof", form_url, "AI Form Solver Verification")
         
         # Stage to human approval gate
-        from core.models import WriteAction, ApprovalAction
+        from core.models import WriteAction, ApprovalAction, ApprovalDecision
         write_act = WriteAction(
             action=ApprovalAction.APPLY,
             opportunity_id=f"form-{uuid.uuid4().hex[:6]}",
@@ -232,7 +232,8 @@ async def fill_and_submit_form(
             target_url=form_url,
             payload={"answers": mock_answers, "screenshot_url": snap_url},
         )
-        decision = await request(write_act)
+        decision = ApprovalDecision(action=write_act)
+        _pending[decision.id] = decision
         
         return {
             "status": "staged_for_approval" if not auto_submit else "submitted",
@@ -240,7 +241,7 @@ async def fill_and_submit_form(
             "fields_resolved": len(mock_answers),
             "answers": mock_answers,
             "screenshot_url": snap_url,
-            "approval_id": decision.action.id,
+            "approval_id": decision.id,
             "message": "Form successfully filled and verified by AI. Staged at Human Approval Gate for 1-click submission."
         }
 
