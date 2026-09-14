@@ -47,8 +47,9 @@ import {
   synthesizeWorkflow, 
   runWorkflow, 
   saveWorkflow,
-  deleteWorkflow
-} from "@/lib/api";
+  deleteWorkflow,
+  BASE_URL
+} from "../../lib/api";
 import { 
   WorkflowDefinition, 
   WorkflowStep, 
@@ -1253,14 +1254,14 @@ export default function WorkflowStudioPage() {
                 {executionResult.screenshots.map((snapUrl, idx) => (
                   <div key={idx} className="rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-md group relative">
                     <img
-                      src={`http://localhost:8000${snapUrl}`}
+                      src={`${BASE_URL}${snapUrl}`}
                       alt="Workflow Screenshot"
                       className="w-full h-auto object-cover transition-transform group-hover:scale-105 duration-300"
                     />
                     <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between">
                       <span className="text-[11px] font-mono text-slate-700 font-semibold">Proof Snapshot #{idx + 1}</span>
                       <a
-                        href={`http://localhost:8000${snapUrl}`}
+                        href={`${BASE_URL}${snapUrl}`}
                         target="_blank"
                         rel="noreferrer"
                         className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700"
