@@ -535,17 +535,71 @@ async def execute_simulated_workflow(workflow: WorkflowDefinition) -> WorkflowEx
             elif step.type == "ai_filter":
                 criteria = step.params.get("criteria", workflow.description)
                 limit = int(step.params.get("limit", 3))
-                items = [
-                    {"index": 1, "title": f"Top AI Agent Framework ({workflow.name.split(':')[0]})", "link": current_url, "score": "98% match"},
-                    {"index": 2, "title": "Autonomous LLM Multi-Step Engine", "link": current_url, "score": "94% match"},
-                    {"index": 3, "title": "High-Performance Developer Workflow Radar", "link": current_url, "score": "89% match"},
-                ][:limit]
+                if "github" in current_url.lower() or "bounty" in workflow.name.lower() or "repo" in workflow.name.lower():
+                    items = [
+                        {"index": 1, "title": "astral-sh/uv — An extremely fast Python package installer and resolver, written in Rust", "link": "https://github.com/astral-sh/uv", "reason": "Trending #1 in Python (48k ★) · 10-100x faster than pip", "score": "99% match"},
+                        {"index": 2, "title": "browser-use/browser-use — Make websites accessible for AI agents", "link": "https://github.com/browser-use/browser-use", "reason": "Trending #1 in AI Web Agents (32k ★) · Multi-modal vision browser tool", "score": "96% match"},
+                        {"index": 3, "title": "karpathy/nanoGPT — The simplest, fastest repo for training/finetuning medium-sized GPTs", "link": "https://github.com/karpathy/nanoGPT", "reason": "Core PyTorch LLM foundation (38k ★) · Clean single-file implementation", "score": "94% match"},
+                    ][:limit]
+                elif "hackathon" in current_url.lower() or "unstop" in current_url.lower() or "form" in workflow.name.lower():
+                    items = [
+                        {"index": 1, "title": "National GenAI Hackathon 2026 ($25,000 Prize Pool)", "link": "https://unstop.com/hackathons", "reason": "Matches Python/TypeScript & Agentic AI skill vault", "score": "98% match"},
+                        {"index": 2, "title": "Global Autonomous Agent Challenge", "link": "https://devpost.com/hackathons", "reason": "Free entry · Team formation open", "score": "94% match"},
+                        {"index": 3, "title": "Web3 Open Source Builders Grant", "link": "https://gitcoin.co/grants", "reason": "Quadratic funding round open", "score": "90% match"},
+                    ][:limit]
+                else:
+                    items = [
+                        {"index": 1, "title": f"Top Intelligence Match ({workflow.name.split(':')[0]})", "link": current_url, "reason": "High semantic relevance to query parameters", "score": "98% match"},
+                        {"index": 2, "title": "Autonomous LLM Multi-Step Engine", "link": current_url, "reason": "Verified live interactive session payload", "score": "94% match"},
+                        {"index": 3, "title": "High-Performance Developer Workflow Radar", "link": current_url, "reason": "MutationObserver 0 DOM conflicts", "score": "89% match"},
+                    ][:limit]
                 result.extracted_items = items
                 step_res.output_message = f"AI Content Filter scored and selected {len(items)} top matching items for criteria: '{criteria[:40]}...'"
                 step_res.data = {"items": items}
 
             elif step.type == "extract_text":
-                doc_text = f"# 📄 Extracted Documentation Analysis\n\n**Source:** {current_url}\n**Analyzed by:** OpenAI GPT-4o-mini Meta-Architect\n\n## 📌 Executive Overview\nAutonomous agent execution pipeline verified with live DOM state awareness, session cookie injection, and non-bypassable safety checkpoints.\n\n## 🚀 Technical Highlights\n- Explored live DOM elements without fragile XPath selectors\n- Extracted structured telemetry & verified screenshot proofs\n- Exported structured items to persistent SQLite database"
+                if "github" in current_url.lower() or "repo" in workflow.name.lower():
+                    doc_text = f"""# 📄 Repository Intelligence & Architecture Analysis
+
+**Source:** {current_url}
+**Analyzed by:** Scout CloakBrowser with OpenAI GPT-4o-mini Meta-Architect
+
+---
+
+## 📌 Executive Summary
+**astral-sh/uv** is an extremely fast Python package and project manager, written in Rust. It is designed as a drop-in replacement for `pip`, `pip-tools`, `virtualenv`, and `poetry` workflows.
+
+## 🚀 Key Features & Performance
+- ⚡ **10-100x faster** than `pip` and `pip-tools`
+- 🔒 Comprehensive lockfile support (`uv.lock`)
+- 📦 Universal wheels and source distribution building
+- 🐍 Built-in Python interpreter management (`uv python install`)
+- 🛠️ Zero-dependency installation via standalone static binary
+
+## 💻 Quickstart & Verification
+```bash
+# Install uv standalone
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Resolve dependencies 10x faster
+uv pip install -r requirements.txt
+```
+
+## 🏗️ Architecture & Technology Stack
+- **Language**: 100% Safe Rust
+- **HTTP Engine**: `reqwest` with HTTP/2 multiplexing and connection pooling
+- **Cache Engine**: Content-addressable global shared wheel cache
+- **Resolver**: PubGrub version solving algorithm
+"""
+                    if not result.extracted_items:
+                        result.extracted_items = [
+                            {"index": 1, "title": "astral-sh/uv — Extremely fast Python package installer and resolver in Rust", "link": "https://github.com/astral-sh/uv", "reason": "48k ★ · Trending #1 Developer Tool", "score": "99% match"},
+                            {"index": 2, "title": "browser-use/browser-use — Make websites accessible for AI agents", "link": "https://github.com/browser-use/browser-use", "reason": "32k ★ · Trending #1 AI Web Agent", "score": "96% match"},
+                            {"index": 3, "title": "karpathy/nanoGPT — Simplest, fastest repo for training GPTs", "link": "https://github.com/karpathy/nanoGPT", "reason": "38k ★ · Core LLM PyTorch base", "score": "94% match"},
+                        ]
+                else:
+                    doc_text = f"# 📄 Extracted Documentation Analysis\n\n**Source:** {current_url}\n**Analyzed by:** OpenAI GPT-4o-mini Meta-Architect\n\n## 📌 Executive Overview\nAutonomous agent execution pipeline verified with live DOM state awareness, session cookie injection, and non-bypassable safety checkpoints.\n\n## 🚀 Technical Highlights\n- Explored live DOM elements without fragile XPath selectors\n- Extracted structured telemetry & verified screenshot proofs\n- Exported structured items to persistent SQLite database"
+                
                 result.extracted_text = doc_text
                 step_res.output_message = f"✨ Extracted and summarized {len(doc_text)} characters of documentation from {current_url}."
                 step_res.data = {"text": doc_text, "raw_length": len(doc_text)}
