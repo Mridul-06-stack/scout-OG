@@ -61,6 +61,8 @@ app.include_router(verticals.router, prefix="/api")
 app.include_router(workflows.router, prefix="/api")
 
 
+@app.get("/")
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "service": "scout"}
+    return {"status": "ok", "service": "scout", "version": "0.1.0"}
+
